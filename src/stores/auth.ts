@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import type { Player, SpotifyPlayer } from "../types/auth";
@@ -40,9 +40,14 @@ export const useAuthStore = defineStore("auth", () => {
   const error = ref<string | null>(null);
 
   // Load persisted player data on store initialization
-  const persistedPlayer = localStorage.getItem("player");
-  if (persistedPlayer) {
-    player.value = JSON.parse(persistedPlayer);
+  try {
+    const persistedPlayer = localStorage.getItem("player");
+    if (persistedPlayer) {
+      player.value = JSON.parse(persistedPlayer);
+    }
+  } catch (err) {
+    console.error("Failed to load persisted player data:", err);
+    localStorage.removeItem("player");
   }
 
   const isAuthenticated = computed(() => !!player.value);
@@ -155,20 +160,27 @@ export const useAuthStore = defineStore("auth", () => {
   const handleCallback = async (code: string) => {
     try {
       isLoading.value = true;
+      error.value = null;
       const redirectUri = `${window.location.origin}/auth/callback`;
-      const response = await axios.get(
+      const response = await axios.get<Player>(
         `${API_URL}/auth/callback?code=${code}&redirect_uri=${encodeURIComponent(
           redirectUri
         )}`
       );
       player.value = response.data;
-      // Persist player data
       localStorage.setItem("player", JSON.stringify(response.data));
       await initializeSpotifyPlayer();
       return true;
     } catch (err) {
+      const axiosError = err as AxiosError<{ message: string }>;
       console.error("Failed to handle Spotify callback:", err);
-      error.value = "Failed to complete Spotify authentication";
+      if (axiosError.response?.status === 401) {
+        error.value = "Authentication failed. Please try again.";
+      } else if (axiosError.response?.data?.message) {
+        error.value = axiosError.response.data.message;
+      } else {
+        error.value = "Failed to complete Spotify authentication";
+      }
       throw err;
     } finally {
       isLoading.value = false;
@@ -180,17 +192,22 @@ export const useAuthStore = defineStore("auth", () => {
     if (!player.value?.id) return false;
 
     try {
-      const response = await axios.get(
+      error.value = null;
+      const response = await axios.get<Player>(
         `${API_URL}/auth/validate?playerId=${player.value.id}`
       );
       player.value = response.data;
-      // Persist updated player data
       localStorage.setItem("player", JSON.stringify(response.data));
       return true;
     } catch (err) {
+      const axiosError = err as AxiosError<{ message: string }>;
       console.error("Failed to validate session:", err);
+      if (axiosError.response?.status === 401) {
+        error.value = "Session expired. Please log in again.";
+      } else if (axiosError.response?.data?.message) {
+        error.value = axiosError.response.data.message;
+      }
       player.value = null;
-      // Clear persisted data on validation failure
       localStorage.removeItem("player");
       return false;
     }
@@ -200,8 +217,8 @@ export const useAuthStore = defineStore("auth", () => {
   const logout = () => {
     player.value = null;
     spotifyPlayer.value = null;
+    error.value = null;
     localStorage.removeItem("player");
-    // Additional cleanup if needed
   };
 
   return {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from 'vue-toastification'
 import PlayerList from '../components/PlayerList.vue'
 import { useGameStore } from '../stores/game'
 import { GameStatus } from '../types/game'
@@ -8,6 +9,7 @@ import { GameStatus } from '../types/game'
 const route = useRoute()
 const router = useRouter()
 const gameStore = useGameStore()
+const toast = useToast()
 const userGuess = ref('')
 const showCopied = ref(false)
 
@@ -21,6 +23,19 @@ onMounted(async () => {
 // Cleanup on component unmount
 onUnmounted(() => {
   gameStore.leaveGame()
+})
+
+// Watch for error changes and show toast
+watch(() => gameStore.error, (newError) => {
+  if (newError) {
+    if (newError.toLowerCase().includes('error')) {
+      toast.error(newError)
+    } else {
+      toast.info(newError)
+    }
+    // Clear the error after showing toast
+    gameStore.error = null
+  }
 })
 
 const submitGuess = () => {
@@ -40,11 +55,13 @@ const copyRoomCode = async () => {
   try {
     await navigator.clipboard.writeText(gameStore.currentGame.roomCode)
     showCopied.value = true
+    toast.success('Room code copied to clipboard!')
     setTimeout(() => {
       showCopied.value = false
     }, 2000)
   } catch (err) {
     console.error('Failed to copy:', err)
+    toast.error('Failed to copy room code')
   }
 }
 </script>
@@ -73,12 +90,6 @@ const copyRoomCode = async () => {
                       <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
                     </svg>
                   </button>
-                  <span 
-                    v-if="showCopied"
-                    class="text-sm text-spotify-green animate-fade-out"
-                  >
-                    Copied!
-                  </span>
                 </div>
               </div>
             </div>
@@ -92,10 +103,6 @@ const copyRoomCode = async () => {
               </button>
               <button @click="leaveParty" class="btn btn-secondary">Leave Party</button>
             </div>
-          </div>
-
-          <div v-if="gameStore.error" class="text-red-500 mb-4">
-            {{ gameStore.error }}
           </div>
 
           <div v-if="gameStore.currentGame?.status === GameStatus.WAITING" class="text-center py-8">

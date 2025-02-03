@@ -11,18 +11,6 @@ const recentlyLeft = ref(new Set<string>())
 const isCurrentPlayer = (id: string) => id === authStore.player?.id
 const playerCount = computed(() => gameStore.currentGame?.playerIds.length ?? 0)
 const minPlayers = 2
-
-const getPlayerNumber = (id: string) => {
-  return (gameStore.currentGame?.playerIds.indexOf(id) ?? -1) + 1
-}
-
-// Watch for player departures
-const handlePlayerLeft = (playerId: string) => {
-  recentlyLeft.value.add(playerId)
-  setTimeout(() => {
-    recentlyLeft.value.delete(playerId)
-  }, 5000)
-}
 </script>
 
 <template>

@@ -3,25 +3,32 @@ import { defineStore } from "pinia";
 import { io, Socket } from "socket.io-client";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import type { AnswerResult, Game, RoundData } from "../types/game";
+import type { AnswerResult, Game } from "../types/game";
 import { GameStatus } from "../types/game";
+import { useAuthStore } from "./auth";
 
 const API_URL = "http://localhost:3000";
 
+export interface RoundStartData {
+  songId: string;
+  songUri: string;
+  options: string[];
+  duration: number;
+  startTime: Date;
+  endTime: Date;
+}
+
 export const useGameStore = defineStore("game", () => {
   const router = useRouter();
+  const authStore = useAuthStore();
   const currentGame = ref<Game | null>(null);
-  const currentRound = ref<RoundData | null>(null);
+  const currentRound = ref<RoundStartData | null>(null);
   const socket = ref<Socket | null>(null);
-  const playerId = ref<string>(
-    localStorage.getItem("playerId") || crypto.randomUUID()
-  );
   const error = ref<string | null>(null);
 
-  // Save playerId to localStorage
-  localStorage.setItem("playerId", playerId.value);
-
-  const isHost = computed(() => currentGame.value?.hostId === playerId.value);
+  const isHost = computed(
+    () => currentGame.value?.hostId === authStore.player?.id
+  );
   const isInGame = computed(() => !!currentGame.value);
   const canStartGame = computed(
     () =>
@@ -40,6 +47,7 @@ export const useGameStore = defineStore("game", () => {
         playerId: string;
         playerCount: number;
         playerIds: string[];
+        playerNames: string[];
       }) => {
         if (currentGame.value) {
           currentGame.value.playerIds = data.playerIds;
@@ -62,7 +70,7 @@ export const useGameStore = defineStore("game", () => {
           // Update host if changed
           if (data.newHostId) {
             currentGame.value.hostId = data.newHostId;
-            if (data.newHostId === playerId.value) {
+            if (data.newHostId === authStore.player?.id) {
               error.value = "You are now the host!";
             }
           }
@@ -87,8 +95,13 @@ export const useGameStore = defineStore("game", () => {
       }, 3000);
     });
 
-    socket.value.on("roundStarted", (data: RoundData) => {
+    socket.value.on("roundStarted", (data: RoundStartData) => {
       currentRound.value = data;
+      // Play the track using Spotify Web Playback SDK
+      if (authStore.spotifyPlayer) {
+        // TODO: Implement playback using the SDK
+        console.log("Playing track:", data.songUri);
+      }
     });
 
     socket.value.on("answerResult", (data: AnswerResult) => {
@@ -103,16 +116,21 @@ export const useGameStore = defineStore("game", () => {
 
   // API calls
   const createGame = async () => {
+    if (!authStore.player?.id) {
+      error.value = "You must be logged in to create a game";
+      return;
+    }
+
     try {
       const response = await axios.post(`${API_URL}/games`, {
-        hostId: playerId.value,
+        hostId: authStore.player.id,
       });
       currentGame.value = response.data;
       setupSocket();
       if (currentGame.value) {
         socket.value?.emit("joinRoom", {
           roomCode: currentGame.value.roomCode,
-          playerId: playerId.value,
+          playerId: authStore.player.id,
         });
       }
     } catch (err) {
@@ -122,15 +140,20 @@ export const useGameStore = defineStore("game", () => {
   };
 
   const joinGame = async (roomCode: string) => {
+    if (!authStore.player?.id) {
+      error.value = "You must be logged in to join a game";
+      return;
+    }
+
     try {
       const response = await axios.post(`${API_URL}/games/${roomCode}/join`, {
-        playerId: playerId.value,
+        playerId: authStore.player.id,
       });
       currentGame.value = response.data;
       setupSocket();
       socket.value?.emit("joinRoom", {
         roomCode,
-        playerId: playerId.value,
+        playerId: authStore.player.id,
       });
     } catch (err) {
       error.value = "Failed to join game";
@@ -139,11 +162,11 @@ export const useGameStore = defineStore("game", () => {
   };
 
   const startGame = async () => {
-    if (!currentGame.value || !isHost.value) return;
+    if (!currentGame.value || !isHost.value || !authStore.player?.id) return;
 
     try {
       await axios.post(`${API_URL}/games/${currentGame.value.roomCode}/start`, {
-        hostId: playerId.value,
+        hostId: authStore.player.id,
       });
     } catch (err) {
       error.value = "Failed to start game";
@@ -152,11 +175,11 @@ export const useGameStore = defineStore("game", () => {
   };
 
   const submitAnswer = (answer: string) => {
-    if (!currentGame.value || !socket.value) return;
+    if (!currentGame.value || !socket.value || !authStore.player?.id) return;
 
     socket.value.emit("submitAnswer", {
       roomCode: currentGame.value.roomCode,
-      playerId: playerId.value,
+      playerId: authStore.player.id,
       answer,
     });
   };
@@ -172,7 +195,6 @@ export const useGameStore = defineStore("game", () => {
   return {
     currentGame,
     currentRound,
-    playerId,
     error,
     isHost,
     isInGame,

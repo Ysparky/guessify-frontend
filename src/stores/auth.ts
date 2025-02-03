@@ -39,6 +39,12 @@ export const useAuthStore = defineStore("auth", () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
+  // Load persisted player data on store initialization
+  const persistedPlayer = localStorage.getItem("player");
+  if (persistedPlayer) {
+    player.value = JSON.parse(persistedPlayer);
+  }
+
   const isAuthenticated = computed(() => !!player.value);
   const hasValidToken = computed(() => {
     if (!player.value) return false;
@@ -156,6 +162,8 @@ export const useAuthStore = defineStore("auth", () => {
         )}`
       );
       player.value = response.data;
+      // Persist player data
+      localStorage.setItem("player", JSON.stringify(response.data));
       await initializeSpotifyPlayer();
       return true;
     } catch (err) {
@@ -176,10 +184,14 @@ export const useAuthStore = defineStore("auth", () => {
         `${API_URL}/auth/validate?playerId=${player.value.id}`
       );
       player.value = response.data;
+      // Persist updated player data
+      localStorage.setItem("player", JSON.stringify(response.data));
       return true;
     } catch (err) {
       console.error("Failed to validate session:", err);
       player.value = null;
+      // Clear persisted data on validation failure
+      localStorage.removeItem("player");
       return false;
     }
   };
@@ -188,6 +200,7 @@ export const useAuthStore = defineStore("auth", () => {
   const logout = () => {
     player.value = null;
     spotifyPlayer.value = null;
+    localStorage.removeItem("player");
     // Additional cleanup if needed
   };
 

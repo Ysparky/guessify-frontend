@@ -3,12 +3,12 @@ import { defineStore } from "pinia";
 import { io, Socket } from "socket.io-client";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import type { AnswerResult, Game, PlayerInfo } from "../types/game";
+import type { Game, PlayerInfo } from "../types/game";
 import { GameStatus } from "../types/game";
 import { useAuthStore } from "./auth";
 import { useStatsStore } from "./stats";
 
-const API_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export interface RoundStartData {
   songId: string;
@@ -19,11 +19,35 @@ export interface RoundStartData {
   endTime: Date;
 }
 
+export interface RoundResultsResponse {
+  results: Array<{
+    playerId: string;
+    displayName: string;
+    answer: string;
+    isCorrect: boolean;
+    scoreEarned: number;
+  }>;
+  currentRound: number;
+  totalRounds: number;
+}
+
+export interface RoundResults {
+  roundNumber: number;
+  correctAnswer: string;
+  playerAnswers: Array<{
+    playerId: string;
+    answer: string;
+    correct: boolean;
+    score: number;
+  }>;
+}
+
 export const useGameStore = defineStore("game", () => {
   const router = useRouter();
   const authStore = useAuthStore();
   const currentGame = ref<Game | null>(null);
   const currentRound = ref<RoundStartData | null>(null);
+  const roundResults = ref<RoundResults | null>(null);
   const socket = ref<Socket | null>(null);
   const error = ref<string | null>(null);
   const roundTimer = ref<number | null>(null);
@@ -47,7 +71,20 @@ export const useGameStore = defineStore("game", () => {
 
   // Socket setup
   const setupSocket = () => {
+    console.log("Setting up socket connection...");
     socket.value = io(API_URL);
+
+    socket.value.on("connect", () => {
+      console.log("Socket connected");
+    });
+
+    socket.value.on("disconnect", () => {
+      console.log("Socket disconnected");
+    });
+
+    socket.value.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
 
     socket.value.on(
       "playerJoined",
@@ -57,6 +94,7 @@ export const useGameStore = defineStore("game", () => {
         playerIds: string[];
         players: PlayerInfo[];
       }) => {
+        console.log("playerJoined event received:", data);
         if (currentGame.value) {
           currentGame.value.playerIds = data.playerIds;
           currentGame.value.players = data.players;
@@ -104,6 +142,79 @@ export const useGameStore = defineStore("game", () => {
     );
 
     socket.value.on(
+      "gameStarted",
+      (data: {
+        gameId: string;
+        hostId: string;
+        players: PlayerInfo[];
+        totalRounds: number;
+      }) => {
+        console.log("gameStarted event received:", data);
+        if (currentGame.value) {
+          currentGame.value.status = GameStatus.IN_PROGRESS;
+          currentGame.value.players = data.players;
+          currentGame.value.totalRounds = data.totalRounds;
+          error.value = "Game is starting...";
+        }
+      }
+    );
+
+    socket.value.on("roundStarted", (data: RoundStartData) => {
+      console.log("roundStarted event received:", data);
+      currentRound.value = data;
+      roundResults.value = null;
+      elapsedTime.value = 0;
+
+      // Clear any existing timer
+      if (roundTimer.value) {
+        clearInterval(roundTimer.value);
+      }
+
+      // Start the timer to update elapsed time every 100ms
+      roundTimer.value = window.setInterval(() => {
+        const now = new Date().getTime();
+        const startTime = new Date(data.startTime).getTime();
+        elapsedTime.value = Math.min(now - startTime, data.duration);
+
+        // Stop the timer when we reach the duration
+        if (elapsedTime.value >= data.duration) {
+          if (roundTimer.value) {
+            clearInterval(roundTimer.value);
+            roundTimer.value = null;
+          }
+        }
+      }, 100);
+    });
+
+    socket.value.on("roundResults", (data: RoundResultsResponse) => {
+      console.log("roundResults event received:", data);
+      // Clear any existing timer
+      if (roundTimer.value) {
+        clearInterval(roundTimer.value);
+        roundTimer.value = null;
+      }
+      elapsedTime.value = 0;
+
+      // Store round results
+      roundResults.value = {
+        roundNumber: data.currentRound,
+        correctAnswer: data.results.find((r) => r.isCorrect)?.answer || "",
+        playerAnswers: data.results.map((r) => ({
+          playerId: r.playerId,
+          answer: r.answer,
+          correct: r.isCorrect,
+          score: r.scoreEarned,
+        })),
+      };
+      currentRound.value = null;
+
+      // Update current round number in game state
+      if (currentGame.value) {
+        currentGame.value.currentRoundNumber = data.currentRound;
+      }
+    });
+
+    socket.value.on(
       "gameEnded",
       (data: {
         gameId: string;
@@ -148,6 +259,7 @@ export const useGameStore = defineStore("game", () => {
         // Reset game state
         currentGame.value = null;
         currentRound.value = null;
+        roundResults.value = null;
 
         // Redirect to home after a short delay
         setTimeout(() => {
@@ -156,40 +268,8 @@ export const useGameStore = defineStore("game", () => {
       }
     );
 
-    socket.value.on("roundStarted", (data: RoundStartData) => {
-      currentRound.value = data;
-      elapsedTime.value = 0;
-
-      // Clear any existing timer
-      if (roundTimer.value) {
-        clearInterval(roundTimer.value);
-      }
-
-      // Start the timer to update elapsed time every 100ms
-      roundTimer.value = window.setInterval(() => {
-        const now = new Date().getTime();
-        const startTime = new Date(data.startTime).getTime();
-        elapsedTime.value = Math.min(now - startTime, data.duration);
-
-        // Stop the timer when we reach the duration
-        if (elapsedTime.value >= data.duration) {
-          if (roundTimer.value) {
-            clearInterval(roundTimer.value);
-            roundTimer.value = null;
-          }
-        }
-      }, 100);
-    });
-
-    socket.value.on("answerResult", (data: AnswerResult) => {
-      // TODO: Handle answer results and scoring
-      const player = getPlayerById(data.playerId);
-      if (player) {
-        console.log(`${player.displayName}'s answer:`, data);
-      }
-    });
-
     socket.value.on("error", (data: { message: string; code?: string }) => {
+      console.error("Socket error event received:", data);
       error.value = data.message;
 
       // Handle device-related errors
@@ -200,22 +280,6 @@ export const useGameStore = defineStore("game", () => {
         router.push("/login");
       }
     });
-
-    socket.value.on(
-      "gameStarted",
-      (data: {
-        gameId: string;
-        hostId: string;
-        players: PlayerInfo[];
-        totalRounds: number;
-      }) => {
-        if (currentGame.value) {
-          currentGame.value.status = GameStatus.IN_PROGRESS;
-          currentGame.value.players = data.players;
-          currentGame.value.totalRounds = data.totalRounds;
-        }
-      }
-    );
   };
 
   // API calls
@@ -282,6 +346,20 @@ export const useGameStore = defineStore("game", () => {
     }
   };
 
+  const startRound = () => {
+    if (!currentGame.value || !isHost.value || !authStore.player?.id) return;
+
+    try {
+      socket.value?.emit("startRound", {
+        roomCode: currentGame.value.roomCode,
+        hostId: authStore.player.id,
+      });
+    } catch (err) {
+      console.error("Failed to start round:", err);
+      error.value = "Failed to start round";
+    }
+  };
+
   const submitAnswer = (answer: string) => {
     if (!currentGame.value || !socket.value || !authStore.player?.id) return;
 
@@ -302,12 +380,14 @@ export const useGameStore = defineStore("game", () => {
     socket.value = null;
     currentGame.value = null;
     currentRound.value = null;
+    roundResults.value = null;
     error.value = null;
   };
 
   return {
     currentGame,
     currentRound,
+    roundResults,
     error,
     isHost,
     isInGame,
@@ -316,6 +396,7 @@ export const useGameStore = defineStore("game", () => {
     createGame,
     joinGame,
     startGame,
+    startRound,
     submitAnswer,
     leaveGame,
     elapsedTime,

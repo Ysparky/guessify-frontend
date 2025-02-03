@@ -105,12 +105,7 @@ const copyRoomCode = async () => {
             </div>
           </div>
 
-          <div v-if="gameStore.currentGame?.status === GameStatus.WAITING" class="text-center py-8">
-            <h3 class="text-xl font-semibold mb-2">Waiting for players...</h3>
-            <p class="text-gray-600">Share the room code with your friends to start playing!</p>
-          </div>
-
-          <div v-else-if="gameStore.currentRound" class="space-y-6">
+          <div v-if="gameStore.currentRound" class="space-y-6">
             <div class="bg-gray-100 p-4 rounded-lg">
               <div class="text-center">
                 <div class="text-lg font-semibold mb-2">
@@ -129,21 +124,8 @@ const copyRoomCode = async () => {
                     </button>
                   </div>
                 </template>
-                
-                <template v-else>
-                  <div class="text-2xl font-mono tracking-wider mb-4">
-                    {{ gameStore.currentRound.revealedLetters }}
-                  </div>
-                  <form @submit.prevent="submitGuess" class="flex gap-2 max-w-md mx-auto">
-                    <input
-                      v-model="userGuess"
-                      type="text"
-                      class="flex-1 px-4 py-2 border rounded-lg"
-                      placeholder="Type your guess..."
-                    >
-                    <button type="submit" class="btn btn-primary">Submit</button>
-                  </form>
-                </template>
+
+                <!-- Letter reveal mode is coming soon -->
               </div>
             </div>
 
@@ -162,6 +144,80 @@ const copyRoomCode = async () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Round Results -->
+          <div v-else-if="gameStore.roundResults" class="space-y-6">
+            <div class="bg-gray-100 p-6 rounded-lg">
+              <h3 class="text-xl font-semibold mb-4 text-center">Round {{ gameStore.currentGame?.currentRoundNumber }} Results</h3>
+              
+              <!-- Correct Answer -->
+              <div class="mb-6 text-center">
+                <div class="text-sm text-gray-600 mb-1">Correct Answer</div>
+                <div class="text-lg font-medium text-spotify-green">{{ gameStore.roundResults.correctAnswer }}</div>
+              </div>
+
+              <!-- Player Results -->
+              <div class="space-y-3">
+                <div 
+                  v-for="answer in gameStore.roundResults.playerAnswers" 
+                  :key="answer.playerId"
+                  class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm"
+                >
+                  <div class="flex items-center gap-3">
+                    <div 
+                      class="w-8 h-8 rounded-full bg-spotify-green bg-opacity-10 flex items-center justify-center"
+                    >
+                      {{ gameStore.getPlayerById(answer.playerId)?.displayName.charAt(0) }}
+                    </div>
+                    <div>
+                      <div class="font-medium">{{ gameStore.getPlayerById(answer.playerId)?.displayName }}</div>
+                      <div class="text-sm text-gray-600">{{ answer.answer }}</div>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div 
+                      class="text-sm font-medium"
+                      :class="answer.correct ? 'text-green-600' : 'text-red-600'"
+                    >
+                      {{ answer.score }} points
+                    </div>
+                    <div 
+                      class="w-6 h-6 rounded-full flex items-center justify-center"
+                      :class="answer.correct ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'"
+                    >
+                      <svg v-if="answer.correct" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                      <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Next Round Button (Host Only) -->
+              <div 
+                v-if="gameStore.isHost && 
+                      gameStore.currentGame?.currentRoundNumber != null && 
+                      gameStore.currentGame?.totalRounds != null && 
+                      gameStore.currentGame.currentRoundNumber < gameStore.currentGame.totalRounds" 
+                class="mt-6 text-center"
+              >
+                <button 
+                  @click="gameStore.startRound()"
+                  class="btn btn-primary"
+                >
+                  Start Next Round
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="gameStore.currentGame?.status === GameStatus.WAITING" class="text-center py-8">
+            <h3 class="text-xl font-semibold mb-2">Waiting for players...</h3>
+            <p class="text-gray-600">Share the room code with your friends to start playing!</p>
           </div>
         </div>
       </div>

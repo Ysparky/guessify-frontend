@@ -81,40 +81,6 @@ export const useAuthStore = defineStore("auth", () => {
       },
     });
 
-    // Error Handlers
-    spotifyPlayerInstance.addListener(
-      "initialization_error",
-      ({ message }: SpotifyError) => {
-        error.value = `Failed to initialize Spotify player: ${message}`;
-        reject(new Error(message));
-      }
-    );
-
-    spotifyPlayerInstance.addListener(
-      "authentication_error",
-      ({ message }: SpotifyError) => {
-        error.value = `Spotify authentication error: ${message}`;
-        reject(new Error(message));
-      }
-    );
-
-    spotifyPlayerInstance.addListener(
-      "account_error",
-      ({ message }: SpotifyError) => {
-        error.value = `Spotify account error: ${message}`;
-        reject(new Error(message));
-      }
-    );
-
-    spotifyPlayerInstance.addListener(
-      "playback_error",
-      ({ message }: SpotifyError) => {
-        error.value = `Spotify playback error: ${message}`;
-        getDevices();
-        initializeSpotifyPlayer(true).catch(console.error);
-      }
-    );
-
     // State Updates
     spotifyPlayerInstance.addListener(
       "player_state_changed",
@@ -150,8 +116,46 @@ export const useAuthStore = defineStore("auth", () => {
       }
     );
 
+    // Error handling
+    spotifyPlayerInstance.addListener(
+      "initialization_error",
+      ({ message }: SpotifyError) => {
+        console.error("Failed to initialize Spotify player:", message);
+        reject(new Error(message));
+      }
+    );
+
+    spotifyPlayerInstance.addListener(
+      "authentication_error",
+      ({ message }: SpotifyError) => {
+        console.error("Failed to authenticate Spotify player:", message);
+        reject(new Error(message));
+      }
+    );
+
+    spotifyPlayerInstance.addListener(
+      "account_error",
+      ({ message }: SpotifyError) => {
+        console.error("Spotify account error:", message);
+        reject(new Error(message));
+      }
+    );
+
+    spotifyPlayerInstance.addListener(
+      "playback_error",
+      ({ message }: SpotifyError) => {
+        // Ignore cpapi.spotify.com 404 errors as they don't affect functionality
+        if (!message.includes("cpapi.spotify.com")) {
+          console.error("Spotify playback error:", message);
+        }
+      }
+    );
+
     // Connect to the player
-    spotifyPlayerInstance.connect();
+    spotifyPlayerInstance.connect().catch((error: Error) => {
+      console.error("Failed to connect to Spotify player:", error);
+      reject(error);
+    });
   };
 
   // Initialize or reinitialize Spotify Web Playback SDK

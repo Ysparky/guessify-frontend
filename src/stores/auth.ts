@@ -52,6 +52,12 @@ export const useAuthStore = defineStore("auth", () => {
     });
   };
 
+  // Cleanup Spotify player
+  const cleanupPlayer = () => {
+    // Only clear the reference, backend handles the actual player state
+    spotifyPlayer.value = null;
+  };
+
   // Request available devices
   const getDevices = () => {
     if (!socket.value || !player.value?.id) return;
@@ -311,5 +317,6 @@ export const useAuthStore = defineStore("auth", () => {
     initializeSpotifyPlayer,
     getDevices,
     setActiveDevice,
+    cleanupPlayer,
   };
 });

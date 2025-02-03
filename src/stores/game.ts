@@ -234,6 +234,7 @@ export const useGameStore = defineStore("game", () => {
         averageScore: number;
         reason?: string;
       }) => {
+        console.log("gameEnded event received:", data);
         const statsStore = useStatsStore();
 
         // Clear any existing timer
@@ -260,6 +261,9 @@ export const useGameStore = defineStore("game", () => {
         currentGame.value = null;
         currentRound.value = null;
         roundResults.value = null;
+
+        // Clear frontend player reference (backend handles actual player state)
+        authStore.cleanupPlayer();
 
         // Redirect to home after a short delay
         setTimeout(() => {

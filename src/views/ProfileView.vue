@@ -50,7 +50,10 @@ const achievements = computed(() => {
 onMounted(async () => {
   if (authStore.player?.id) {
     try {
-      await statsStore.getPlayerStats(authStore.player.id);
+      await Promise.all([
+        statsStore.getPlayerStats(authStore.player.id),
+        statsStore.getRecentGames(authStore.player.id)
+      ]);
     } catch (err) {
       toast.error('Failed to load profile data');
     }
@@ -163,20 +166,32 @@ onMounted(async () => {
     <!-- Recent Games -->
     <div class="bg-white rounded-lg shadow-lg p-6">
       <h3 class="text-xl font-semibold mb-4">Recent Games</h3>
-      <div v-if="statsStore.gameResults" class="space-y-4">
-        <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+      <div v-if="statsStore.recentGames.length > 0" class="space-y-4">
+        <div 
+          v-for="game in statsStore.recentGames" 
+          :key="game.gameId"
+          class="flex items-center justify-between p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
           <div>
-            <div class="font-medium">{{ statsStore.gameResults.game.roomCode }}</div>
-            <div class="text-sm text-gray-500">
-              {{ new Date(statsStore.gameResults.createdAt).toLocaleDateString() }}
+            <div class="flex items-center gap-2">
+              <span 
+                class="text-sm px-2 py-0.5 rounded-full font-medium"
+                :class="game.isWinner ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+              >
+                Rank #{{ game.rank }}/{{ game.totalPlayers }}
+              </span>
+              <span class="text-sm text-gray-500">
+                {{ new Date(game.createdAt).toLocaleDateString() }}
+              </span>
+            </div>
+            <div class="mt-1 text-sm text-gray-600">
+              {{ game.correctAnswers }}/{{ game.totalAnswers }} correct answers
             </div>
           </div>
           <div class="text-right">
-            <div class="font-medium">
-              {{ statsStore.gameResults.rankings.find(r => r.playerId === authStore.player?.id)?.totalScore || 0 }} points
-            </div>
+            <div class="font-medium">{{ game.score }} points</div>
             <div class="text-sm text-gray-500">
-              Rank: #{{ statsStore.gameResults.rankings.find(r => r.playerId === authStore.player?.id)?.rank || '-' }}
+              {{ Math.round((game.correctAnswers / game.totalAnswers) * 100) }}% accuracy
             </div>
           </div>
         </div>

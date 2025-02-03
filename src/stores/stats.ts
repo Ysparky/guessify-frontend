@@ -5,6 +5,7 @@ import type {
   GameResults,
   LeaderboardEntry,
   PlayerStats,
+  RecentGame,
 } from "../types/stats";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -13,6 +14,7 @@ export const useStatsStore = defineStore("stats", () => {
   const playerStats = ref<PlayerStats | null>(null);
   const leaderboard = ref<LeaderboardEntry[]>([]);
   const gameResults = ref<GameResults | null>(null);
+  const recentGames = ref<RecentGame[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
@@ -31,6 +33,26 @@ export const useStatsStore = defineStore("stats", () => {
       error.value =
         axiosError.response?.data?.message ||
         "Failed to fetch player statistics";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Get recent games
+  const getRecentGames = async (playerId: string, limit: number = 10) => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+      const response = await axios.get<RecentGame[]>(
+        `${API_URL}/stats/player/${playerId}/recent?limit=${limit}`
+      );
+      recentGames.value = response.data;
+    } catch (err) {
+      const axiosError = err as AxiosError<{ message: string }>;
+      console.error("Failed to fetch recent games:", err);
+      error.value =
+        axiosError.response?.data?.message || "Failed to fetch recent games";
       throw err;
     } finally {
       isLoading.value = false;
@@ -88,6 +110,7 @@ export const useStatsStore = defineStore("stats", () => {
     playerStats.value = null;
     leaderboard.value = [];
     gameResults.value = null;
+    recentGames.value = [];
     error.value = null;
   };
 
@@ -95,11 +118,13 @@ export const useStatsStore = defineStore("stats", () => {
     playerStats,
     leaderboard,
     gameResults,
+    recentGames,
     isLoading,
     error,
     getPlayerStats,
     getLeaderboard,
     getGameResults,
+    getRecentGames,
     clearStats,
   };
 });

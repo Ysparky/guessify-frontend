@@ -15,6 +15,17 @@ export interface LeaderboardEntry {
   averageScore: number;
 }
 
+export interface RecentGame {
+  gameId: string;
+  rank: number;
+  totalPlayers: number;
+  score: number;
+  correctAnswers: number;
+  totalAnswers: number;
+  isWinner: boolean;
+  createdAt: string;
+}
+
 export interface GameResults {
   id: string;
   game: {

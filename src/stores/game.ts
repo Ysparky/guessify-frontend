@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import type { AnswerResult, Game, PlayerInfo } from "../types/game";
 import { GameStatus } from "../types/game";
 import { useAuthStore } from "./auth";
+import { useStatsStore } from "./stats";
 
 const API_URL = "http://localhost:3000";
 
@@ -100,16 +101,51 @@ export const useGameStore = defineStore("game", () => {
       }
     );
 
-    socket.value.on("gameEnded", (data: { reason: string }) => {
-      error.value = data.reason;
-      // Reset game state
-      currentGame.value = null;
-      currentRound.value = null;
-      // Redirect to home after a short delay
-      setTimeout(() => {
-        router.push("/");
-      }, 3000);
-    });
+    socket.value.on(
+      "gameEnded",
+      (data: {
+        gameId: string;
+        winner: {
+          id: string;
+          displayName: string;
+        };
+        rankings: Array<{
+          playerId: string;
+          displayName: string;
+          totalScore: number;
+          rank: number;
+          correctAnswers: number;
+          totalAnswers: number;
+        }>;
+        totalRoundsPlayed: number;
+        averageScore: number;
+        reason?: string;
+      }) => {
+        const statsStore = useStatsStore();
+
+        // Show game end reason if provided
+        if (data.reason) {
+          error.value = data.reason;
+        } else {
+          // Show winner announcement
+          error.value = `Game Over! ${data.winner.displayName} wins!`;
+        }
+
+        // Store game results
+        if (data.gameId) {
+          statsStore.getGameResults(data.gameId, authStore.player?.id);
+        }
+
+        // Reset game state
+        currentGame.value = null;
+        currentRound.value = null;
+
+        // Redirect to home after a short delay
+        setTimeout(() => {
+          router.push("/");
+        }, 3000);
+      }
+    );
 
     socket.value.on("roundStarted", (data: RoundStartData) => {
       currentRound.value = data;

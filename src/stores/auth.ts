@@ -2,6 +2,7 @@ import axios, { AxiosError } from "axios";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import type { Player, SpotifyPlayer } from "../types/auth";
+import { useStatsStore } from "./stats";
 
 const API_URL = "http://localhost:3000";
 
@@ -215,10 +216,12 @@ export const useAuthStore = defineStore("auth", () => {
 
   // Logout
   const logout = () => {
+    const statsStore = useStatsStore();
     player.value = null;
     spotifyPlayer.value = null;
     error.value = null;
     localStorage.removeItem("player");
+    statsStore.clearStats();
   };
 
   return {

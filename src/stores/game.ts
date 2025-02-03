@@ -26,6 +26,8 @@ export const useGameStore = defineStore("game", () => {
   const currentRound = ref<RoundStartData | null>(null);
   const socket = ref<Socket | null>(null);
   const error = ref<string | null>(null);
+  const roundTimer = ref<number | null>(null);
+  const elapsedTime = ref(0);
 
   const isHost = computed(
     () => currentGame.value?.hostId === authStore.player?.id
@@ -123,6 +125,13 @@ export const useGameStore = defineStore("game", () => {
       }) => {
         const statsStore = useStatsStore();
 
+        // Clear any existing timer
+        if (roundTimer.value) {
+          clearInterval(roundTimer.value);
+          roundTimer.value = null;
+        }
+        elapsedTime.value = 0;
+
         // Show game end reason if provided
         if (data.reason) {
           error.value = data.reason;
@@ -149,10 +158,40 @@ export const useGameStore = defineStore("game", () => {
 
     socket.value.on("roundStarted", (data: RoundStartData) => {
       currentRound.value = data;
+      elapsedTime.value = 0;
+
+      // Clear any existing timer
+      if (roundTimer.value) {
+        clearInterval(roundTimer.value);
+      }
+
+      // Start the timer to update elapsed time every 100ms
+      roundTimer.value = window.setInterval(() => {
+        const now = new Date().getTime();
+        const startTime = new Date(data.startTime).getTime();
+        elapsedTime.value = Math.min(now - startTime, data.duration);
+
+        // Stop the timer when we reach the duration
+        if (elapsedTime.value >= data.duration) {
+          if (roundTimer.value) {
+            clearInterval(roundTimer.value);
+            roundTimer.value = null;
+          }
+          // Pause playback when round ends
+          authStore.spotifyPlayer?.pause();
+        }
+      }, 100);
+
       // Play the track using Spotify Web Playback SDK
       if (authStore.spotifyPlayer) {
-        // TODO: Implement playback using the SDK
-        console.log("Playing track:", data.songUri);
+        authStore.spotifyPlayer
+          .play({
+            uris: [data.songUri],
+            position_ms: 0,
+          })
+          .catch((error) => {
+            console.error("Failed to play track:", error);
+          });
       }
     });
 
@@ -164,9 +203,45 @@ export const useGameStore = defineStore("game", () => {
       }
     });
 
-    socket.value.on("error", (data: { message: string }) => {
+    socket.value.on("error", (data: { message: string; code?: string }) => {
       error.value = data.message;
+
+      // Handle device-related errors
+      if (data.code === "NO_DEVICE") {
+        authStore.getDevices(); // Request available devices
+      } else if (data.code === "PLAYBACK_ERROR") {
+        // Retry playback or show error
+        if (currentRound.value && authStore.spotifyPlayer) {
+          authStore.spotifyPlayer
+            .play({
+              uris: [currentRound.value.songUri],
+              position_ms: 0,
+            })
+            .catch((error) => {
+              console.error("Failed to retry playback:", error);
+            });
+        }
+      } else if (data.code === "PREMIUM_REQUIRED") {
+        // Handle premium requirement error
+        router.push("/login");
+      }
     });
+
+    socket.value.on(
+      "gameStarted",
+      (data: {
+        gameId: string;
+        hostId: string;
+        players: PlayerInfo[];
+        totalRounds: number;
+      }) => {
+        if (currentGame.value) {
+          currentGame.value.status = GameStatus.IN_PROGRESS;
+          currentGame.value.players = data.players;
+          currentGame.value.totalRounds = data.totalRounds;
+        }
+      }
+    );
   };
 
   // API calls
@@ -220,12 +295,13 @@ export const useGameStore = defineStore("game", () => {
     if (!currentGame.value || !isHost.value || !authStore.player?.id) return;
 
     try {
-      await axios.post(`${API_URL}/games/${currentGame.value.roomCode}/start`, {
+      socket.value?.emit("startGame", {
+        roomCode: currentGame.value.roomCode,
         hostId: authStore.player.id,
       });
     } catch (err) {
+      console.error("Failed to start game:", err);
       error.value = "Failed to start game";
-      console.error(err);
     }
   };
 
@@ -240,6 +316,11 @@ export const useGameStore = defineStore("game", () => {
   };
 
   const leaveGame = () => {
+    if (roundTimer.value) {
+      clearInterval(roundTimer.value);
+      roundTimer.value = null;
+    }
+    elapsedTime.value = 0;
     socket.value?.disconnect();
     socket.value = null;
     currentGame.value = null;
@@ -260,5 +341,6 @@ export const useGameStore = defineStore("game", () => {
     startGame,
     submitAnswer,
     leaveGame,
+    elapsedTime,
   };
 });

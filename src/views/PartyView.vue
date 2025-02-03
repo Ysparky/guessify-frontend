@@ -152,9 +152,12 @@ const copyRoomCode = async () => {
                 <div class="flex-1">
                   <div class="h-2 bg-gray-200 rounded-full">
                     <div
-                      class="h-2 bg-spotify-green rounded-full transition-all duration-1000"
-                      :style="{ width: `${(gameStore.currentRound.duration / 30000) * 100}%` }"
+                      class="h-2 bg-spotify-green rounded-full transition-all duration-100"
+                      :style="{ width: `${(gameStore.elapsedTime / (gameStore.currentRound?.duration || 30000)) * 100}%` }"
                     ></div>
+                  </div>
+                  <div class="mt-2 text-sm text-gray-600 text-right">
+                    {{ Math.ceil((gameStore.currentRound?.duration || 30000) - gameStore.elapsedTime) / 1000 }}s
                   </div>
                 </div>
               </div>

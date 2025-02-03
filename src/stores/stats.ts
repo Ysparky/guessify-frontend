@@ -1,50 +1,13 @@
 import axios, { AxiosError } from "axios";
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import type {
+  GameResults,
+  LeaderboardEntry,
+  PlayerStats,
+} from "../types/stats";
 
-const API_URL = "http://localhost:3000";
-
-interface PlayerStats {
-  totalGames: number;
-  gamesWon: number;
-  averageRank: number;
-  averageScore: number;
-  totalCorrectAnswers: number;
-  accuracy: number;
-}
-
-interface LeaderboardEntry {
-  playerId: string;
-  displayName: string;
-  gamesWon: number;
-  totalGames: number;
-  averageScore: number;
-}
-
-interface GameResults {
-  id: string;
-  game: {
-    id: string;
-    roomCode: string;
-    status: string;
-  };
-  winner: {
-    id: string;
-    displayName: string;
-  };
-  rankings: Array<{
-    playerId: string;
-    displayName: string;
-    totalScore: number;
-    rank: number;
-    correctAnswers: number;
-    totalAnswers: number;
-  }>;
-  totalRoundsPlayed: number;
-  averageScore: number;
-  totalPlayers: number;
-  createdAt: string;
-}
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const useStatsStore = defineStore("stats", () => {
   const playerStats = ref<PlayerStats | null>(null);

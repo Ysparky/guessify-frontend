@@ -22,7 +22,10 @@ const authStore = useAuthStore();
             </svg>
             Stats
           </router-link>
-          <div class="flex items-center gap-3">
+          <router-link 
+            to="/profile" 
+            class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors"
+          >
             <img 
               v-if="authStore.player?.avatarUrl"
               :src="authStore.player.avatarUrl" 
@@ -30,7 +33,7 @@ const authStore = useAuthStore();
               class="w-8 h-8 rounded-full"
             >
             <span class="text-sm">{{ authStore.player?.displayName }}</span>
-          </div>
+          </router-link>
         </nav>
       </div>
     </header>

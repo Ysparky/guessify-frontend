@@ -8,11 +8,8 @@ const gameStore = useGameStore()
 const roomCode = ref('')
 const showJoinInput = ref(false)
 
-const createNewParty = async () => {
-  await gameStore.createGame()
-  if (gameStore.currentGame) {
-    router.push(`/party/${gameStore.currentGame.roomCode}`)
-  }
+const createNewParty = () => {
+  router.push('/create')
 }
 
 const joinParty = async () => {

@@ -44,3 +44,35 @@ export interface AnswerResult {
   correct: boolean;
   score: number;
 }
+
+export interface SpotifyImage {
+  url: string;
+  height: number;
+  width: number;
+}
+
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  images: SpotifyImage[];
+  tracks: {
+    total: number;
+  };
+}
+
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+  images: SpotifyImage[];
+  popularity: number;
+  genres: string[];
+}
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  uri: string;
+  artist: string;
+  duration_ms: number;
+}

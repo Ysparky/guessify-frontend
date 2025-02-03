@@ -3,8 +3,14 @@ import { defineStore } from "pinia";
 import { io, Socket } from "socket.io-client";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import type { Game, PlayerInfo } from "../types/game";
-import { GameStatus } from "../types/game";
+import type {
+  Game,
+  PlayerInfo,
+  SpotifyArtist,
+  SpotifyPlaylist,
+  SpotifyTrack,
+} from "../types/game";
+import { GameMode, GameStatus } from "../types/game";
 import { useAuthStore } from "./auth";
 import { useStatsStore } from "./stats";
 
@@ -42,6 +48,15 @@ export interface RoundResults {
     correct: boolean;
     score: number;
   }>;
+}
+
+interface GameSettings {
+  gameMode: GameMode;
+  songSource: {
+    type: "playlist" | "artist" | "random";
+    id: string | null;
+    ownerId: string;
+  };
 }
 
 export const useGameStore = defineStore("game", () => {
@@ -289,7 +304,7 @@ export const useGameStore = defineStore("game", () => {
   };
 
   // API calls
-  const createGame = async () => {
+  const createGame = async (settings?: GameSettings) => {
     if (!authStore.player?.id) {
       error.value = "You must be logged in to create a game";
       return;
@@ -298,6 +313,7 @@ export const useGameStore = defineStore("game", () => {
     try {
       const response = await axios.post(`${API_URL}/games`, {
         hostId: authStore.player.id,
+        settings,
       });
       currentGame.value = response.data;
       setupSocket();
@@ -390,6 +406,62 @@ export const useGameStore = defineStore("game", () => {
     error.value = null;
   };
 
+  // Get user's Spotify playlists
+  const getUserPlaylists = async (playerId: string) => {
+    try {
+      error.value = null;
+      const response = await axios.get<SpotifyPlaylist[]>(
+        `${API_URL}/games/playlists/${playerId}`
+      );
+      return response.data;
+    } catch (err) {
+      console.error("Failed to fetch user playlists:", err);
+      error.value = "Failed to fetch your playlists";
+      throw err;
+    }
+  };
+
+  // Search for Spotify artists
+  const searchArtists = async (query: string, playerId: string) => {
+    try {
+      error.value = null;
+      const response = await axios.get<SpotifyArtist[]>(
+        `${API_URL}/games/artists/search`,
+        {
+          params: {
+            playerId,
+            query,
+          },
+        }
+      );
+      return response.data;
+    } catch (err) {
+      console.error("Failed to search artists:", err);
+      error.value = "Failed to search for artists";
+      throw err;
+    }
+  };
+
+  // Get artist's top tracks
+  const getArtistTracks = async (artistId: string, playerId: string) => {
+    try {
+      error.value = null;
+      const response = await axios.get<SpotifyTrack[]>(
+        `${API_URL}/games/artists/${artistId}/tracks`,
+        {
+          params: {
+            playerId,
+          },
+        }
+      );
+      return response.data;
+    } catch (err) {
+      console.error("Failed to fetch artist tracks:", err);
+      error.value = "Failed to fetch artist's top tracks";
+      throw err;
+    }
+  };
+
   return {
     currentGame,
     currentRound,
@@ -406,5 +478,8 @@ export const useGameStore = defineStore("game", () => {
     submitAnswer,
     leaveGame,
     elapsedTime,
+    getUserPlaylists,
+    searchArtists,
+    getArtistTracks,
   };
 });

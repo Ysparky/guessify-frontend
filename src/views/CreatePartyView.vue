@@ -1,71 +1,158 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import ArtistSearch from '../components/ArtistSearch.vue'
+import PlaylistSelector from '../components/PlaylistSelector.vue'
+import { useAuthStore } from '../stores/auth'
+import { useGameStore } from '../stores/game'
+import { GameMode } from '../types/game'
 
-const gameMode = ref('multiple-choice')
-const partyName = ref('')
+const router = useRouter()
+const gameStore = useGameStore()
+const authStore = useAuthStore()
 
-const createParty = () => {
-  // TODO: Implement party creation logic
-  console.log('Creating party:', {
-    name: partyName.value,
-    mode: gameMode.value
-  })
-}
+const gameMode = ref<GameMode>(GameMode.MULTIPLE_CHOICE)
+const songSource = ref<'playlist' | 'artist' | 'random'>('playlist')
+const selectedPlaylistId = ref<string | null>(null)
+const selectedArtistId = ref<string | null>(null)
+
+const createParty = async () => {
+  if (!authStore.player?.id) return;
+
+  try {
+    const settings = {
+      gameMode: gameMode.value,
+      songSource: {
+        type: songSource.value,
+        id: songSource.value === 'playlist' ? selectedPlaylistId.value :
+            songSource.value === 'artist' ? selectedArtistId.value :
+            null,
+        ownerId: authStore.player.id
+      }
+    };
+
+    await gameStore.createGame(settings);
+    if (gameStore.currentGame) {
+      router.push(`/party/${gameStore.currentGame.roomCode}`);
+    }
+  } catch (err) {
+    console.error('Failed to create party:', err);
+  }
+};
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto p-6">
+  <div class="max-w-4xl mx-auto p-6">
     <h2 class="text-3xl font-bold mb-8">Create New Party</h2>
     
-    <form @submit.prevent="createParty" class="space-y-6">
+    <form @submit.prevent="createParty" class="space-y-8">
+      <!-- Game Mode Selection -->
       <div>
-        <label for="partyName" class="block text-sm font-medium text-gray-700">Party Name</label>
-        <input
-          id="partyName"
-          v-model="partyName"
-          type="text"
-          required
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-spotify-green focus:ring-spotify-green"
-          placeholder="Enter party name"
-        >
+        <h3 class="text-xl font-semibold mb-4">Game Mode</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            type="button"
+            class="p-6 rounded-lg text-left transition-colors border-2"
+            :class="[
+              gameMode === GameMode.MULTIPLE_CHOICE
+                ? 'bg-spotify-green bg-opacity-10 border-spotify-green'
+                : 'bg-gray-50 hover:bg-gray-100 border-transparent'
+            ]"
+            @click="gameMode = GameMode.MULTIPLE_CHOICE"
+          >
+            <div class="font-semibold mb-2">Multiple Choice</div>
+            <p class="text-sm text-gray-600">
+              Players choose from 4 options. Great for casual play and larger groups.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            class="p-6 rounded-lg text-left transition-colors border-2 opacity-50 cursor-not-allowed"
+            disabled
+          >
+            <div class="font-semibold mb-2">Letter Reveal (Coming Soon)</div>
+            <p class="text-sm text-gray-600">
+              Letters are revealed as the song plays. Perfect for music experts.
+            </p>
+          </button>
+        </div>
       </div>
 
+      <!-- Music Source Selection -->
       <div>
-        <label class="block text-sm font-medium text-gray-700">Game Mode</label>
-        <div class="mt-2 space-y-4">
-          <div class="flex items-center">
-            <input
-              id="multiple-choice"
-              type="radio"
-              v-model="gameMode"
-              value="multiple-choice"
-              class="h-4 w-4 text-spotify-green focus:ring-spotify-green"
+        <h3 class="text-xl font-semibold mb-4">Music Source</h3>
+        <div class="space-y-6">
+          <!-- Source Type Tabs -->
+          <div class="flex gap-4 border-b border-gray-200">
+            <button
+              type="button"
+              class="px-4 py-2 font-medium transition-colors relative"
+              :class="songSource === 'playlist' ? 'text-spotify-green' : 'text-gray-600 hover:text-gray-900'"
+              @click="songSource = 'playlist'"
             >
-            <label for="multiple-choice" class="ml-3">
-              <span class="block text-sm font-medium text-gray-700">Multiple Choice</span>
-              <span class="block text-sm text-gray-500">Players choose from 4 song options</span>
-            </label>
+              Your Playlists
+              <div
+                v-if="songSource === 'playlist'"
+                class="absolute bottom-0 left-0 w-full h-0.5 bg-spotify-green"
+              ></div>
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 font-medium transition-colors relative"
+              :class="songSource === 'artist' ? 'text-spotify-green' : 'text-gray-600 hover:text-gray-900'"
+              @click="songSource = 'artist'"
+            >
+              Search Artist
+              <div
+                v-if="songSource === 'artist'"
+                class="absolute bottom-0 left-0 w-full h-0.5 bg-spotify-green"
+              ></div>
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 font-medium transition-colors relative"
+              :class="songSource === 'random' ? 'text-spotify-green' : 'text-gray-600 hover:text-gray-900'"
+              @click="songSource = 'random'"
+            >
+              Random
+              <div
+                v-if="songSource === 'random'"
+                class="absolute bottom-0 left-0 w-full h-0.5 bg-spotify-green"
+              ></div>
+            </button>
           </div>
-          
-          <div class="flex items-center">
-            <input
-              id="revealed-letters"
-              type="radio"
-              v-model="gameMode"
-              value="revealed-letters"
-              class="h-4 w-4 text-spotify-green focus:ring-spotify-green"
-            >
-            <label for="revealed-letters" class="ml-3">
-              <span class="block text-sm font-medium text-gray-700">Revealed Letters</span>
-              <span class="block text-sm text-gray-500">Letters are revealed as the song plays</span>
-            </label>
+
+          <!-- Source Selection -->
+          <div v-if="songSource === 'playlist'">
+            <PlaylistSelector v-model="selectedPlaylistId" />
+          </div>
+
+          <div v-else-if="songSource === 'artist'">
+            <ArtistSearch v-model="selectedArtistId" />
+          </div>
+
+          <div v-else class="text-center py-8 bg-gray-50 rounded-lg">
+            <p class="text-gray-600">
+              Songs will be randomly selected from Spotify's most popular tracks
+            </p>
           </div>
         </div>
       </div>
 
+      <!-- Action Buttons -->
       <div class="flex justify-end gap-4">
-        <button type="button" @click="$router.push('/')" class="btn btn-secondary">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create Party</button>
+        <button type="button" @click="router.push('/')" class="btn btn-secondary">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          :disabled="(songSource === 'playlist' && !selectedPlaylistId) || 
+                    (songSource === 'artist' && !selectedArtistId)"
+        >
+          Create Party
+        </button>
       </div>
     </form>
   </div>

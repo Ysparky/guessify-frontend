@@ -177,22 +177,8 @@ export const useGameStore = defineStore("game", () => {
             clearInterval(roundTimer.value);
             roundTimer.value = null;
           }
-          // Pause playback when round ends
-          authStore.spotifyPlayer?.pause();
         }
       }, 100);
-
-      // Play the track using Spotify Web Playback SDK
-      if (authStore.spotifyPlayer) {
-        authStore.spotifyPlayer
-          .play({
-            uris: [data.songUri],
-            position_ms: 0,
-          })
-          .catch((error) => {
-            console.error("Failed to play track:", error);
-          });
-      }
     });
 
     socket.value.on("answerResult", (data: AnswerResult) => {
@@ -209,18 +195,6 @@ export const useGameStore = defineStore("game", () => {
       // Handle device-related errors
       if (data.code === "NO_DEVICE") {
         authStore.getDevices(); // Request available devices
-      } else if (data.code === "PLAYBACK_ERROR") {
-        // Retry playback or show error
-        if (currentRound.value && authStore.spotifyPlayer) {
-          authStore.spotifyPlayer
-            .play({
-              uris: [currentRound.value.songUri],
-              position_ms: 0,
-            })
-            .catch((error) => {
-              console.error("Failed to retry playback:", error);
-            });
-        }
       } else if (data.code === "PREMIUM_REQUIRED") {
         // Handle premium requirement error
         router.push("/login");
@@ -257,12 +231,15 @@ export const useGameStore = defineStore("game", () => {
       });
       currentGame.value = response.data;
       setupSocket();
-      if (currentGame.value) {
-        socket.value?.emit("joinRoom", {
-          roomCode: currentGame.value.roomCode,
-          playerId: authStore.player.id,
-        });
+
+      if (!currentGame.value) {
+        throw new Error("Failed to create game: No game data received");
       }
+
+      socket.value?.emit("joinRoom", {
+        roomCode: currentGame.value.roomCode,
+        playerId: authStore.player.id,
+      });
     } catch (err) {
       error.value = "Failed to create game";
       console.error(err);

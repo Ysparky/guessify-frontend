@@ -3,10 +3,17 @@ import { defineStore } from "pinia";
 import type { Socket } from "socket.io-client";
 import io from "socket.io-client";
 import { computed, ref } from "vue";
-import type { Player, SpotifyPlayer } from "../types/auth";
+import type {
+  Player,
+  SpotifyDevice,
+  SpotifyDeviceEvent,
+  SpotifyError,
+  SpotifyPlayer,
+  SpotifyPlayerState,
+} from "../types/auth";
 import { useStatsStore } from "./stats";
 
-const API_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 declare global {
   interface Window {
@@ -20,30 +27,6 @@ declare global {
   }
 }
 
-interface PlayerState {
-  device_id: string;
-  volume: number;
-  paused: boolean;
-  position: number;
-  duration: number;
-  track_window: {
-    current_track: {
-      id: string;
-      uri: string;
-      name: string;
-      artists: Array<{ name: string }>;
-    };
-  };
-}
-
-interface SpotifyDevice {
-  id: string;
-  name: string;
-  type: string;
-  is_active: boolean;
-  volume_percent: number;
-}
-
 export const useAuthStore = defineStore("auth", () => {
   const player = ref<Player | null>(null);
   const spotifyPlayer = ref<SpotifyPlayer | null>(null);
@@ -54,7 +37,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   // Initialize socket connection
   const setupSocket = () => {
-    socket.value = io("http://localhost:3000");
+    socket.value = io(API_URL);
 
     socket.value.on("devices", (data: { devices: SpotifyDevice[] }) => {
       availableDevices.value = data.devices;
@@ -98,10 +81,10 @@ export const useAuthStore = defineStore("auth", () => {
       },
     });
 
-    // Error handling
+    // Error Handlers
     spotifyPlayerInstance.addListener(
       "initialization_error",
-      ({ message }: { message: string }) => {
+      ({ message }: SpotifyError) => {
         error.value = `Failed to initialize Spotify player: ${message}`;
         reject(new Error(message));
       }
@@ -109,7 +92,7 @@ export const useAuthStore = defineStore("auth", () => {
 
     spotifyPlayerInstance.addListener(
       "authentication_error",
-      ({ message }: { message: string }) => {
+      ({ message }: SpotifyError) => {
         error.value = `Spotify authentication error: ${message}`;
         reject(new Error(message));
       }
@@ -117,7 +100,7 @@ export const useAuthStore = defineStore("auth", () => {
 
     spotifyPlayerInstance.addListener(
       "account_error",
-      ({ message }: { message: string }) => {
+      ({ message }: SpotifyError) => {
         error.value = `Spotify account error: ${message}`;
         reject(new Error(message));
       }
@@ -125,18 +108,17 @@ export const useAuthStore = defineStore("auth", () => {
 
     spotifyPlayerInstance.addListener(
       "playback_error",
-      ({ message }: { message: string }) => {
+      ({ message }: SpotifyError) => {
         error.value = `Spotify playback error: ${message}`;
-        // On playback error, refresh devices and try to recover
         getDevices();
         initializeSpotifyPlayer(true).catch(console.error);
       }
     );
 
-    // Playback status updates
+    // State Updates
     spotifyPlayerInstance.addListener(
       "player_state_changed",
-      (state: PlayerState | null) => {
+      (state: SpotifyPlayerState | null) => {
         if (state) {
           spotifyPlayer.value = {
             device_id: state.device_id,
@@ -150,23 +132,20 @@ export const useAuthStore = defineStore("auth", () => {
       }
     );
 
-    // Ready
+    // Device Status
     spotifyPlayerInstance.addListener(
       "ready",
-      ({ device_id }: { device_id: string }) => {
+      ({ device_id }: SpotifyDeviceEvent) => {
         console.log("Spotify player ready with device ID:", device_id);
-        // Always set this device as active when it's ready
         setActiveDevice(device_id);
         resolve(device_id);
       }
     );
 
-    // Not Ready
     spotifyPlayerInstance.addListener(
       "not_ready",
-      ({ device_id }: { device_id: string }) => {
+      ({ device_id }: SpotifyDeviceEvent) => {
         console.log("Device ID is not ready for playback:", device_id);
-        // When device becomes not ready, try to reinitialize
         initializeSpotifyPlayer(true).catch(console.error);
       }
     );

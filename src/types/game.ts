@@ -9,11 +9,18 @@ export enum GameMode {
   LETTER_REVEAL = "LETTER_REVEAL",
 }
 
+export interface PlayerInfo {
+  id: string;
+  displayName: string;
+  avatarUrl: string;
+}
+
 export interface Game {
   id: string;
   roomCode: string;
   hostId: string;
   playerIds: string[];
+  players: PlayerInfo[];
   gameMode: GameMode;
   status: GameStatus;
   currentRoundNumber: number;
@@ -23,10 +30,12 @@ export interface Game {
 }
 
 export interface RoundData {
-  songPreviewUrl: string;
+  songId: string;
+  songUri: string;
   options: string[];
   duration: number;
-  revealedLetters?: string;
+  startTime: Date;
+  endTime: Date;
 }
 
 export interface AnswerResult {

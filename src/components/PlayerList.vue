@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useAuthStore } from '../stores/auth';
 import { useGameStore } from '../stores/game';
 import { GameStatus } from '../types/game';
 
 const gameStore = useGameStore()
+const authStore = useAuthStore()
 const recentlyLeft = ref(new Set<string>())
 
-const isCurrentPlayer = (id: string) => id === gameStore.playerId
+const isCurrentPlayer = (id: string) => id === authStore.player?.id
 const playerCount = computed(() => gameStore.currentGame?.playerIds.length ?? 0)
 const minPlayers = 2
 
@@ -45,30 +47,42 @@ const handlePlayerLeft = (playerId: string) => {
       <li 
         v-for="playerId in gameStore.currentGame?.playerIds" 
         :key="playerId"
-        class="flex items-center gap-2 p-2 rounded-lg transition-colors duration-200"
+        class="flex items-center gap-3 p-2 rounded-lg transition-colors duration-200"
         :class="[
           isCurrentPlayer(playerId) ? 'bg-spotify-green bg-opacity-10' : 'hover:bg-gray-50',
           recentlyLeft.has(playerId) ? 'animate-pulse' : ''
         ]"
       >
-        <div 
-          class="w-2 h-2 rounded-full transition-colors duration-200"
-          :class="[
-            gameStore.currentGame?.status === GameStatus.WAITING
-              ? 'bg-green-500'
-              : 'bg-yellow-500'
-          ]"
-        ></div>
-        <div class="flex-1">
-          <span class="font-medium">Player {{ getPlayerNumber(playerId) }}</span>
-          <div class="flex gap-1 text-sm text-gray-500">
+        <div class="relative">
+          <img 
+            :src="gameStore.getPlayerById(playerId)?.avatarUrl"
+            :alt="gameStore.getPlayerById(playerId)?.displayName"
+            class="w-10 h-10 rounded-full object-cover"
+          >
+          <div 
+            class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white transition-colors duration-200"
+            :class="[
+              gameStore.currentGame?.status === GameStatus.WAITING
+                ? 'bg-green-500'
+                : 'bg-yellow-500'
+            ]"
+          ></div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-medium truncate">
+              {{ gameStore.getPlayerById(playerId)?.displayName }}
+            </span>
             <span 
               v-if="playerId === gameStore.currentGame?.hostId" 
-              class="text-spotify-green font-medium"
+              class="text-xs text-spotify-green font-medium px-2 py-0.5 rounded-full bg-spotify-green bg-opacity-10"
             >
               Host
             </span>
-            <span v-if="isCurrentPlayer(playerId)">
+            <span 
+              v-if="isCurrentPlayer(playerId)"
+              class="text-xs text-gray-500"
+            >
               (You)
             </span>
           </div>

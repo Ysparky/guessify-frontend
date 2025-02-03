@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { io, Socket } from "socket.io-client";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import type { AnswerResult, Game } from "../types/game";
+import type { AnswerResult, Game, PlayerInfo } from "../types/game";
 import { GameStatus } from "../types/game";
 import { useAuthStore } from "./auth";
 
@@ -37,6 +37,11 @@ export const useGameStore = defineStore("game", () => {
       (currentGame.value?.playerIds.length ?? 0) >= 2
   );
 
+  // Get player info by ID
+  const getPlayerById = (playerId: string): PlayerInfo | undefined => {
+    return currentGame.value?.players.find((p) => p.id === playerId);
+  };
+
   // Socket setup
   const setupSocket = () => {
     socket.value = io(API_URL);
@@ -47,10 +52,15 @@ export const useGameStore = defineStore("game", () => {
         playerId: string;
         playerCount: number;
         playerIds: string[];
-        playerNames: string[];
+        players: PlayerInfo[];
       }) => {
         if (currentGame.value) {
           currentGame.value.playerIds = data.playerIds;
+          currentGame.value.players = data.players;
+          const newPlayer = getPlayerById(data.playerId);
+          if (newPlayer) {
+            error.value = `${newPlayer.displayName} joined the game`;
+          }
         }
       }
     );
@@ -61,11 +71,15 @@ export const useGameStore = defineStore("game", () => {
         playerId: string;
         newHostId: string;
         remainingPlayers: string[];
+        players: PlayerInfo[];
         gameStatus: GameStatus;
       }) => {
         if (currentGame.value) {
-          // Update player list
+          const leftPlayer = getPlayerById(data.playerId);
+
+          // Update player lists
           currentGame.value.playerIds = data.remainingPlayers;
+          currentGame.value.players = data.players;
 
           // Update host if changed
           if (data.newHostId) {
@@ -79,7 +93,9 @@ export const useGameStore = defineStore("game", () => {
           currentGame.value.status = data.gameStatus;
 
           // Show who left
-          error.value = `Player ${data.playerId.slice(0, 6)} left the game`;
+          if (leftPlayer) {
+            error.value = `${leftPlayer.displayName} left the game`;
+          }
         }
       }
     );
@@ -106,7 +122,10 @@ export const useGameStore = defineStore("game", () => {
 
     socket.value.on("answerResult", (data: AnswerResult) => {
       // TODO: Handle answer results and scoring
-      console.log("Answer result:", data);
+      const player = getPlayerById(data.playerId);
+      if (player) {
+        console.log(`${player.displayName}'s answer:`, data);
+      }
     });
 
     socket.value.on("error", (data: { message: string }) => {
@@ -199,6 +218,7 @@ export const useGameStore = defineStore("game", () => {
     isHost,
     isInGame,
     canStartGame,
+    getPlayerById,
     createGame,
     joinGame,
     startGame,

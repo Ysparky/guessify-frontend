@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useUserInitials } from '../composables/useUserInitials';
 import { useAuthStore } from '../stores/auth';
@@ -8,6 +9,7 @@ import { useStatsStore } from '../stores/stats';
 const authStore = useAuthStore();
 const statsStore = useStatsStore();
 const toast = useToast();
+const router = useRouter();
 
 const userInitials = useUserInitials(authStore.player?.displayName);
 
@@ -75,10 +77,20 @@ onMounted(async () => {
             {{ userInitials }}
           </div>
         </template>
-        <div>
+        <div class="flex-1">
           <h2 class="text-3xl font-bold mb-2">{{ authStore.player?.displayName }}</h2>
           <div class="text-gray-600">Member since {{ new Date(authStore.player?.createdAt || '').toLocaleDateString() }}</div>
         </div>
+        <button 
+          @click="() => { authStore.logout(); router.push('/login'); }"
+          class="btn btn-secondary flex items-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V7.414a1 1 0 00-.293-.707L11.414 2.414A1 1 0 0010.707 2H4a1 1 0 00-1 1zm9 6V3.586L16.586 8H12z" clip-rule="evenodd" />
+            <path fill-rule="evenodd" d="M10 12a1 1 0 00-1-1H4a1 1 0 100 2h5a1 1 0 001-1z" clip-rule="evenodd" />
+          </svg>
+          Sign Out
+        </button>
       </div>
     </div>
 

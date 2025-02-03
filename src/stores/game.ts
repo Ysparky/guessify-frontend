@@ -266,9 +266,6 @@ export const useGameStore = defineStore("game", () => {
         }
         elapsedTime.value = 0;
 
-        // Show winner announcement
-        error.value = `Game Over! ${data.winner.displayName} wins!`;
-
         // Store game results
         if (data.gameId) {
           statsStore.getGameResults(data.gameId, authStore.player?.id);
@@ -281,11 +278,6 @@ export const useGameStore = defineStore("game", () => {
 
         // Clear frontend player reference (backend handles actual player state)
         authStore.cleanupPlayer();
-
-        // Redirect to home after a short delay
-        setTimeout(() => {
-          router.push("/");
-        }, 3000);
       }
     );
 

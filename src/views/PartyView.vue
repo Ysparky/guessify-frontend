@@ -2,16 +2,33 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
+import GameResultsModal from '../components/GameResultsModal.vue'
 import PlayerList from '../components/PlayerList.vue'
 import { useGameStore } from '../stores/game'
+import { useStatsStore } from '../stores/stats'
 import { GameStatus } from '../types/game'
 
 const route = useRoute()
 const router = useRouter()
 const gameStore = useGameStore()
+const statsStore = useStatsStore()
 const toast = useToast()
 const userGuess = ref('')
 const showCopied = ref(false)
+const showGameResults = ref(false)
+
+// Watch for game results
+watch(() => statsStore.gameResults, (newResults) => {
+  if (newResults) {
+    showGameResults.value = true;
+  }
+});
+
+// Close game results modal
+const closeGameResults = () => {
+  showGameResults.value = false;
+  router.push('/');
+};
 
 // Join the game if not already in one
 onMounted(async () => {
@@ -228,6 +245,14 @@ const copyRoomCode = async () => {
       </div>
     </div>
   </div>
+
+  <!-- Game Results Modal -->
+  <GameResultsModal
+    v-if="statsStore.gameResults"
+    :results="statsStore.gameResults"
+    :show="showGameResults"
+    @close="closeGameResults"
+  />
 </template>
 
 <style scoped>

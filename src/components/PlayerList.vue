@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useUserInitials } from '../composables/useUserInitials';
 import { useAuthStore } from '../stores/auth';
 import { useGameStore } from '../stores/game';
 import { GameStatus } from '../types/game';
@@ -11,6 +12,11 @@ const recentlyLeft = ref(new Set<string>())
 const isCurrentPlayer = (id: string) => id === authStore.player?.id
 const playerCount = computed(() => gameStore.currentGame?.playerIds.length ?? 0)
 const minPlayers = 2
+
+const getPlayerInitials = (playerId: string) => {
+  const player = gameStore.getPlayerById(playerId);
+  return useUserInitials(player?.displayName).value;
+};
 </script>
 
 <template>
@@ -42,11 +48,20 @@ const minPlayers = 2
         ]"
       >
         <div class="relative">
-          <img 
-            :src="gameStore.getPlayerById(playerId)?.avatarUrl"
-            :alt="gameStore.getPlayerById(playerId)?.displayName"
-            class="w-10 h-10 rounded-full object-cover"
-          >
+          <template v-if="gameStore.getPlayerById(playerId)?.avatarUrl">
+            <img 
+              :src="gameStore.getPlayerById(playerId)?.avatarUrl"
+              :alt="gameStore.getPlayerById(playerId)?.displayName"
+              class="w-10 h-10 rounded-full object-cover"
+            >
+          </template>
+          <template v-else>
+            <div 
+              class="w-10 h-10 rounded-full bg-spotify-green bg-opacity-10 flex items-center justify-center text-sm font-medium text-spotify-green"
+            >
+              {{ getPlayerInitials(playerId) }}
+            </div>
+          </template>
           <div 
             class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white transition-colors duration-200"
             :class="[

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
+import { useUserInitials } from '../composables/useUserInitials';
 import { useAuthStore } from '../stores/auth';
 import { useStatsStore } from '../stores/stats';
 
 const authStore = useAuthStore();
 const statsStore = useStatsStore();
 const toast = useToast();
+
+const userInitials = useUserInitials(authStore.player?.displayName);
 
 // Computed properties for achievements
 const achievements = computed(() => {
@@ -58,11 +61,20 @@ onMounted(async () => {
     <!-- Profile Header -->
     <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
       <div class="flex items-center gap-6">
-        <img 
-          :src="authStore.player?.avatarUrl" 
-          :alt="authStore.player?.displayName"
-          class="w-24 h-24 rounded-full object-cover border-4 border-spotify-green"
-        >
+        <template v-if="authStore.player?.avatarUrl">
+          <img 
+            :src="authStore.player.avatarUrl" 
+            :alt="authStore.player.displayName"
+            class="w-24 h-24 rounded-full object-cover border-4 border-spotify-green"
+          >
+        </template>
+        <template v-else>
+          <div 
+            class="w-24 h-24 rounded-full border-4 border-spotify-green bg-spotify-green bg-opacity-10 flex items-center justify-center text-3xl font-bold text-spotify-green"
+          >
+            {{ userInitials }}
+          </div>
+        </template>
         <div>
           <h2 class="text-3xl font-bold mb-2">{{ authStore.player?.displayName }}</h2>
           <div class="text-gray-600">Member since {{ new Date(authStore.player?.createdAt || '').toLocaleDateString() }}</div>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useUserInitials } from './composables/useUserInitials';
 import { useAuthStore } from './stores/auth';
 
 const authStore = useAuthStore();
+const userInitials = useUserInitials(authStore.player?.displayName);
 </script>
 
 <template>
@@ -26,12 +28,20 @@ const authStore = useAuthStore();
             to="/profile" 
             class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors"
           >
-            <img 
-              v-if="authStore.player?.avatarUrl"
-              :src="authStore.player.avatarUrl" 
-              :alt="authStore.player.displayName"
-              class="w-8 h-8 rounded-full"
-            >
+            <template v-if="authStore.player?.avatarUrl">
+              <img 
+                :src="authStore.player.avatarUrl" 
+                :alt="authStore.player.displayName"
+                class="w-8 h-8 rounded-full object-cover"
+              >
+            </template>
+            <template v-else>
+              <div 
+                class="w-8 h-8 rounded-full bg-spotify-green bg-opacity-10 flex items-center justify-center text-sm font-medium text-spotify-green"
+              >
+                {{ userInitials }}
+              </div>
+            </template>
             <span class="text-sm">{{ authStore.player?.displayName }}</span>
           </router-link>
         </nav>

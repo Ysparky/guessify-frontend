@@ -17,6 +17,8 @@ export interface RoundStartData {
   duration: number;
   startTime: Date;
   endTime: Date;
+  currentRound: number;
+  totalRounds: number;
 }
 
 export interface RoundResultsResponse {
@@ -165,6 +167,12 @@ export const useGameStore = defineStore("game", () => {
       roundResults.value = null;
       elapsedTime.value = 0;
 
+      // Update current round number in game state
+      if (currentGame.value) {
+        currentGame.value.currentRoundNumber = data.currentRound;
+        currentGame.value.totalRounds = data.totalRounds;
+      }
+
       // Clear any existing timer
       if (roundTimer.value) {
         clearInterval(roundTimer.value);
@@ -232,7 +240,6 @@ export const useGameStore = defineStore("game", () => {
         }>;
         totalRoundsPlayed: number;
         averageScore: number;
-        reason?: string;
       }) => {
         console.log("gameEnded event received:", data);
         const statsStore = useStatsStore();
@@ -244,13 +251,8 @@ export const useGameStore = defineStore("game", () => {
         }
         elapsedTime.value = 0;
 
-        // Show game end reason if provided
-        if (data.reason) {
-          error.value = data.reason;
-        } else {
-          // Show winner announcement
-          error.value = `Game Over! ${data.winner.displayName} wins!`;
-        }
+        // Show winner announcement
+        error.value = `Game Over! ${data.winner.displayName} wins!`;
 
         // Store game results
         if (data.gameId) {

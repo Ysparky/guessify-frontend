@@ -231,6 +231,16 @@ export const useGameStore = defineStore("game", () => {
       // Update current round number in game state
       if (currentGame.value) {
         currentGame.value.currentRoundNumber = data.currentRound;
+
+        // If there are more rounds and we're the host, automatically start next round after 3 seconds
+        if (
+          isHost.value &&
+          currentGame.value.currentRoundNumber < currentGame.value.totalRounds
+        ) {
+          setTimeout(() => {
+            startRound();
+          }, 3000);
+        }
       }
     });
 

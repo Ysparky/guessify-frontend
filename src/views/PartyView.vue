@@ -18,6 +18,7 @@ const userGuess = ref('')
 const showCopied = ref(false)
 const showGameResults = ref(false)
 const selectedOption = ref<string | null>(null)
+const nextRoundCountdown = ref<number | null>(null)
 
 // Watch for game results
 watch(() => statsStore.gameResults, (newResults) => {
@@ -46,6 +47,27 @@ watch(() => gameStore.currentRound, (newRound) => {
   }
 });
 
+// Watch for round results to start countdown
+watch(() => gameStore.roundResults, (newResults) => {
+  if (newResults && 
+      gameStore.currentGame?.currentRoundNumber != null && 
+      gameStore.currentGame.currentRoundNumber < (gameStore.currentGame?.totalRounds || 0)
+  ) {
+    nextRoundCountdown.value = 3;
+    const countdownInterval = setInterval(() => {
+      if (nextRoundCountdown.value !== null) {
+        nextRoundCountdown.value--;
+        if (nextRoundCountdown.value <= 0) {
+          clearInterval(countdownInterval);
+          nextRoundCountdown.value = null;
+        }
+      }
+    }, 1000);
+  } else {
+    nextRoundCountdown.value = null;
+  }
+});
+
 // Close game results modal
 const closeGameResults = () => {
   showGameResults.value = false;
@@ -55,9 +77,9 @@ const closeGameResults = () => {
 // Join the game if not already in one
 onMounted(async () => {
   if (!gameStore.isInGame) {
-    await gameStore.joinGame(route.params.id as string)
+    await gameStore.joinGame(route.params.id as string);
   }
-})
+});
 
 // Cleanup on component unmount
 onUnmounted(() => {
@@ -198,6 +220,12 @@ const copyRoomCode = async () => {
             <div class="bg-gray-100 p-6 rounded-lg">
               <h3 class="text-xl font-semibold mb-4 text-center">Round {{ gameStore.currentGame?.currentRoundNumber }} Results</h3>
               
+              <!-- Next Round Countdown -->
+              <div v-if="nextRoundCountdown !== null" class="text-center mb-4">
+                <div class="text-sm text-gray-600">Next round starting in</div>
+                <div class="text-2xl font-bold text-spotify-green">{{ nextRoundCountdown }}s</div>
+              </div>
+              
               <!-- Correct Answer -->
               <div class="mb-6 text-center">
                 <div class="text-sm text-gray-600 mb-1">Correct Answer</div>
@@ -242,22 +270,6 @@ const copyRoomCode = async () => {
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <!-- Next Round Button (Host Only) -->
-              <div 
-                v-if="gameStore.isHost && 
-                      gameStore.currentGame?.currentRoundNumber != null && 
-                      gameStore.currentGame?.totalRounds != null && 
-                      gameStore.currentGame.currentRoundNumber < gameStore.currentGame.totalRounds" 
-                class="mt-6 text-center"
-              >
-                <button 
-                  @click="gameStore.startRound()"
-                  class="btn btn-primary"
-                >
-                  Start Next Round
-                </button>
               </div>
             </div>
           </div>

@@ -90,7 +90,7 @@ const isWinner = computed(() =>
           </div>
           <div>
             <div class="text-sm text-gray-600">Total Rounds</div>
-            <div class="text-xl font-semibold">{{ results.totalRoundsPlayed }}</div>
+            <div class="text-xl font-semibold">{{ results.totalRoundsPlayed - 1 }}</div>
           </div>
         </div>
       </div>

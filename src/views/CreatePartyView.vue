@@ -21,7 +21,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 
 const createParty = async () => {
-  if (!selectedPlaylistId.value && !selectedArtistId.value) {
+  if (songSource.value !== 'random' && !selectedPlaylistId.value && !selectedArtistId.value) {
     error.value = "Please select a playlist or artist"
     return
   }
@@ -34,8 +34,8 @@ const createParty = async () => {
       totalRounds: 5,
       gameMode: GameMode.MULTIPLE_CHOICE,
       songSource: {
-        type: selectedPlaylistId.value ? "playlist" : "artist",
-        id: selectedPlaylistId.value || selectedArtistId.value,
+        type: songSource.value,
+        id: songSource.value === 'random' ? null : (selectedPlaylistId.value || selectedArtistId.value),
         ownerId: authStore.player?.id || "",
       },
     }

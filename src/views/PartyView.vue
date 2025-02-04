@@ -170,7 +170,7 @@ const copyRoomCode = async () => {
             <div class="bg-gray-100 p-4 rounded-lg">
               <div class="text-center">
                 <div class="text-lg font-semibold mb-2">
-                  Round {{ gameStore.currentGame?.currentRoundNumber }} of {{ gameStore.currentGame?.totalRounds }}
+                  Round {{ gameStore.currentGame?.currentRoundNumber ? gameStore.currentGame.currentRoundNumber + 1 : 1 }} of {{ gameStore.currentGame?.totalRounds ?? 0 }}
                 </div>
                 
                 <template v-if="gameStore.currentGame?.gameMode === 'MULTIPLE_CHOICE'">

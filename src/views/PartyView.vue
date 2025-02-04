@@ -17,11 +17,32 @@ const toast = useToast()
 const userGuess = ref('')
 const showCopied = ref(false)
 const showGameResults = ref(false)
+const selectedOption = ref<string | null>(null)
 
 // Watch for game results
 watch(() => statsStore.gameResults, (newResults) => {
   if (newResults) {
     showGameResults.value = true;
+  }
+});
+
+// Watch for round end
+watch(() => gameStore.elapsedTime, (newTime, oldTime) => {
+  if (gameStore.currentRound && !selectedOption.value) {
+    const duration = gameStore.currentRound.duration || 30000;
+    // Check if we just crossed the duration threshold
+    if (newTime >= duration && oldTime < duration) {
+      // Time's up and no selection was made
+      gameStore.submitAnswer('');
+      selectedOption.value = '';
+    }
+  }
+});
+
+// Reset selected option when new round starts
+watch(() => gameStore.currentRound, (newRound) => {
+  if (newRound) {
+    selectedOption.value = null;
   }
 });
 
@@ -56,10 +77,9 @@ watch(() => gameStore.error, (newError) => {
   }
 })
 
-const submitGuess = () => {
-  if (!userGuess.value) return
-  gameStore.submitAnswer(userGuess.value)
-  userGuess.value = ''
+const submitAnswer = (answer: string) => {
+  selectedOption.value = answer
+  gameStore.submitAnswer(answer)
 }
 
 const leaveParty = () => {
@@ -136,8 +156,16 @@ const copyRoomCode = async () => {
                     <button
                       v-for="option in gameStore.currentRound.options"
                       :key="option"
-                      @click="gameStore.submitAnswer(option)"
-                      class="btn btn-secondary"
+                      @click="submitAnswer(option)"
+                      class="btn"
+                      :class="[
+                        selectedOption === option 
+                          ? 'bg-spotify-green text-white' 
+                          : selectedOption 
+                            ? 'btn-secondary opacity-50 cursor-not-allowed' 
+                            : 'btn-secondary hover:bg-gray-100'
+                      ]"
+                      :disabled="selectedOption !== null && selectedOption !== option"
                     >
                       {{ option }}
                     </button>

@@ -13,6 +13,37 @@ const isCurrentPlayer = (id: string) => id === authStore.player?.id
 const playerCount = computed(() => gameStore.currentGame?.playerIds.length ?? 0)
 const minPlayers = 2
 
+// Compute player scores and sort by score
+const sortedPlayers = computed(() => {
+  if (!gameStore.currentGame?.playerIds) return [];
+  
+  const playerScores = new Map<string, number>();
+  
+  // Initialize scores to 0
+  gameStore.currentGame.playerIds.forEach(id => playerScores.set(id, 0));
+  
+  // Sum up scores from all rounds
+  if (gameStore.allRoundResults.length > 0) {
+    gameStore.allRoundResults.forEach(roundResult => {
+      roundResult.playerAnswers.forEach(answer => {
+        const currentScore = playerScores.get(answer.playerId) || 0;
+        playerScores.set(answer.playerId, currentScore + answer.score);
+      });
+    });
+  }
+  
+  // Sort players by total score
+  return [...gameStore.currentGame.playerIds].sort((a, b) => {
+    const scoreA = playerScores.get(a) || 0;
+    const scoreB = playerScores.get(b) || 0;
+    return scoreB - scoreA;
+  }).map(id => ({
+    id,
+    score: playerScores.get(id) || 0,
+    info: gameStore.getPlayerById(id)
+  }));
+});
+
 const getPlayerInitials = (playerId: string) => {
   const player = gameStore.getPlayerById(playerId);
   return useUserInitials(player?.displayName).value;
@@ -39,19 +70,19 @@ const getPlayerInitials = (playerId: string) => {
     
     <ul class="space-y-2">
       <li 
-        v-for="playerId in gameStore.currentGame?.playerIds" 
-        :key="playerId"
+        v-for="player in sortedPlayers" 
+        :key="player.id"
         class="flex items-center gap-3 p-2 rounded-lg transition-colors duration-200"
         :class="[
-          isCurrentPlayer(playerId) ? 'bg-spotify-green bg-opacity-10' : 'hover:bg-gray-50',
-          recentlyLeft.has(playerId) ? 'animate-pulse' : ''
+          isCurrentPlayer(player.id) ? 'bg-spotify-green bg-opacity-10' : 'hover:bg-gray-50',
+          recentlyLeft.has(player.id) ? 'animate-pulse' : ''
         ]"
       >
         <div class="relative">
-          <template v-if="gameStore.getPlayerById(playerId)?.avatarUrl">
+          <template v-if="player.info?.avatarUrl">
             <img 
-              :src="gameStore.getPlayerById(playerId)?.avatarUrl"
-              :alt="gameStore.getPlayerById(playerId)?.displayName"
+              :src="player.info.avatarUrl"
+              :alt="player.info.displayName"
               class="w-10 h-10 rounded-full object-cover"
             >
           </template>
@@ -59,7 +90,7 @@ const getPlayerInitials = (playerId: string) => {
             <div 
               class="w-10 h-10 rounded-full bg-spotify-green bg-opacity-10 flex items-center justify-center text-sm font-medium text-spotify-green"
             >
-              {{ getPlayerInitials(playerId) }}
+              {{ getPlayerInitials(player.id) }}
             </div>
           </template>
           <div 
@@ -74,20 +105,26 @@ const getPlayerInitials = (playerId: string) => {
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <span class="font-medium truncate">
-              {{ gameStore.getPlayerById(playerId)?.displayName }}
+              {{ player.info?.displayName }}
             </span>
             <span 
-              v-if="playerId === gameStore.currentGame?.hostId" 
+              v-if="player.id === gameStore.currentGame?.hostId" 
               class="text-xs text-spotify-green font-medium px-2 py-0.5 rounded-full bg-spotify-green bg-opacity-10"
             >
               Host
             </span>
             <span 
-              v-if="isCurrentPlayer(playerId)"
+              v-if="isCurrentPlayer(player.id)"
               class="text-xs text-gray-500"
             >
               (You)
             </span>
+          </div>
+          <div 
+            v-if="gameStore.currentGame?.status === GameStatus.IN_PROGRESS"
+            class="text-sm text-gray-600"
+          >
+            Score: {{ player.score }}
           </div>
         </div>
       </li>

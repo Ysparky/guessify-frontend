@@ -58,6 +58,7 @@ export const useGameStore = defineStore("game", () => {
   const currentGame = ref<Game | null>(null);
   const currentRound = ref<RoundStartData | null>(null);
   const roundResults = ref<RoundResults | null>(null);
+  const allRoundResults = ref<RoundResults[]>([]);
   const socket = ref<Socket | null>(null);
   const error = ref<string | null>(null);
   const roundTimer = ref<number | null>(null);
@@ -212,7 +213,7 @@ export const useGameStore = defineStore("game", () => {
       elapsedTime.value = 0;
 
       // Store round results
-      roundResults.value = {
+      const newRoundResults = {
         roundNumber: data.currentRound,
         correctAnswer: data.results.find((r) => r.isCorrect)?.answer || "",
         playerAnswers: data.results.map((r) => ({
@@ -222,6 +223,9 @@ export const useGameStore = defineStore("game", () => {
           score: r.scoreEarned,
         })),
       };
+
+      roundResults.value = newRoundResults;
+      allRoundResults.value.push(newRoundResults);
       currentRound.value = null;
 
       // Update current round number in game state
@@ -268,6 +272,7 @@ export const useGameStore = defineStore("game", () => {
         currentGame.value = null;
         currentRound.value = null;
         roundResults.value = null;
+        allRoundResults.value = [];
 
         // Clear frontend player reference (backend handles actual player state)
         authStore.cleanupPlayer();
@@ -393,6 +398,7 @@ export const useGameStore = defineStore("game", () => {
     currentGame.value = null;
     currentRound.value = null;
     roundResults.value = null;
+    allRoundResults.value = [];
     error.value = null;
   };
 
@@ -481,6 +487,7 @@ export const useGameStore = defineStore("game", () => {
     currentGame,
     currentRound,
     roundResults,
+    allRoundResults,
     error,
     elapsedTime,
     isHost,

@@ -1,8 +1,16 @@
-import { computed } from "vue";
+import { computed, type ComputedRef } from "vue";
+import { useAuthStore } from "../stores/auth";
 
-export function useUserInitials(displayName: string | undefined | null) {
+export function useUserInitials(): ComputedRef<string> {
+  const authStore = useAuthStore();
+
   return computed(() => {
-    const name = displayName || "";
+    const displayName = authStore.player?.displayName;
+    if (!displayName) return "";
+
+    const name = displayName.trim();
+    if (!name) return "";
+
     return name
       .split(" ")
       .map((word) => word[0])

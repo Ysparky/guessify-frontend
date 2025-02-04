@@ -3,8 +3,12 @@ import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore()
 
-const loginWithSpotify = () => {
-  authStore.login()
+const loginWithSpotify = async () => {
+  try {
+    await authStore.login();
+  } catch (err) {
+    console.error('Login failed:', err);
+  }
 }
 </script>
 

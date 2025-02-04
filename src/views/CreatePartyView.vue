@@ -3,8 +3,10 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ArtistSearch from '../components/ArtistSearch.vue'
 import PlaylistSelector from '../components/PlaylistSelector.vue'
+import SpotifyPlayer from '../components/SpotifyPlayer.vue'
 import { useAuthStore } from '../stores/auth'
 import { useGameStore } from '../stores/game'
+import type { GameSettings } from '../types/game'
 import { GameMode } from '../types/game'
 
 const router = useRouter()
@@ -15,34 +17,46 @@ const gameMode = ref<GameMode>(GameMode.MULTIPLE_CHOICE)
 const songSource = ref<'playlist' | 'artist' | 'random'>('playlist')
 const selectedPlaylistId = ref<string | null>(null)
 const selectedArtistId = ref<string | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 const createParty = async () => {
-  if (!authStore.player?.id) return;
+  if (!selectedPlaylistId.value && !selectedArtistId.value) {
+    error.value = "Please select a playlist or artist"
+    return
+  }
+
+  loading.value = true
+  error.value = null
 
   try {
-    const settings = {
-      gameMode: gameMode.value,
+    const settings: GameSettings = {
+      totalRounds: 5,
+      gameMode: GameMode.MULTIPLE_CHOICE,
       songSource: {
-        type: songSource.value,
-        id: songSource.value === 'playlist' ? selectedPlaylistId.value :
-            songSource.value === 'artist' ? selectedArtistId.value :
-            null,
-        ownerId: authStore.player.id
-      }
-    };
+        type: selectedPlaylistId.value ? "playlist" : "artist",
+        id: selectedPlaylistId.value || selectedArtistId.value,
+        ownerId: authStore.player?.id || "",
+      },
+    }
 
-    await gameStore.createGame(settings);
+    await gameStore.createGame(settings)
     if (gameStore.currentGame) {
-      router.push(`/party/${gameStore.currentGame.roomCode}`);
+      router.push(`/party/${gameStore.currentGame.roomCode}`)
     }
   } catch (err) {
-    console.error('Failed to create party:', err);
+    console.error(err)
+    error.value = "Failed to create party"
+  } finally {
+    loading.value = false
   }
-};
+}
 </script>
 
 <template>
   <div class="max-w-4xl mx-auto p-6">
+    <SpotifyPlayer />
+    
     <h2 class="text-3xl font-bold mb-8">Create New Party</h2>
     
     <form @submit.prevent="createParty" class="space-y-8">

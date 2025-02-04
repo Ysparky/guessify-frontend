@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import GameResultsModal from '../components/GameResultsModal.vue'
 import PlayerList from '../components/PlayerList.vue'
+import SpotifyPlayer from '../components/SpotifyPlayer.vue'
 import { useGameStore } from '../stores/game'
 import { useStatsStore } from '../stores/stats'
 import { GameStatus } from '../types/game'
@@ -88,6 +89,7 @@ const copyRoomCode = async () => {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Main Game Area -->
       <div class="md:col-span-2">
+        <SpotifyPlayer />
         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-3">

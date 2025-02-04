@@ -5,12 +5,14 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import type {
   Game,
+  GameSettings,
   PlayerInfo,
   SpotifyArtist,
+  SpotifyDevice,
   SpotifyPlaylist,
   SpotifyTrack,
 } from "../types/game";
-import { GameMode, GameStatus } from "../types/game";
+import { GameStatus } from "../types/game";
 import { useAuthStore } from "./auth";
 import { useStatsStore } from "./stats";
 
@@ -48,15 +50,6 @@ export interface RoundResults {
     correct: boolean;
     score: number;
   }>;
-}
-
-interface GameSettings {
-  gameMode: GameMode;
-  songSource: {
-    type: "playlist" | "artist" | "random";
-    id: string | null;
-    ownerId: string;
-  };
 }
 
 export const useGameStore = defineStore("game", () => {
@@ -281,18 +274,23 @@ export const useGameStore = defineStore("game", () => {
       }
     );
 
-    socket.value.on("error", (data: { message: string; code?: string }) => {
-      console.error("Socket error event received:", data);
-      error.value = data.message;
+    socket.value.on(
+      "error",
+      (data: { code: string; message: string; playerId?: string }) => {
+        console.error("Socket error event received:", data);
+        error.value = data.message;
 
-      // Handle device-related errors
-      if (data.code === "NO_DEVICE") {
-        authStore.getDevices(); // Request available devices
-      } else if (data.code === "PREMIUM_REQUIRED") {
-        // Handle premium requirement error
-        router.push("/login");
+        // Handle device-related errors
+        if (data.code === "NO_DEVICE") {
+          getDevices(); // Request available devices
+        } else if (data.code === "PREMIUM_REQUIRED") {
+          router.push("/login");
+        } else if (data.code === "PLAYBACK_ERROR") {
+          // Handle playback errors
+          console.error("Playback error:", data.message);
+        }
       }
-    });
+    );
   };
 
   // API calls
@@ -398,59 +396,84 @@ export const useGameStore = defineStore("game", () => {
     error.value = null;
   };
 
-  // Get user's Spotify playlists
-  const getUserPlaylists = async (playerId: string) => {
+  // API calls for music source management
+  const getUserPlaylists = async (
+    playerId: string
+  ): Promise<SpotifyPlaylist[]> => {
     try {
-      error.value = null;
-      const response = await axios.get<SpotifyPlaylist[]>(
+      const response = await axios.get(
         `${API_URL}/games/playlists/${playerId}`
       );
       return response.data;
     } catch (err) {
-      console.error("Failed to fetch user playlists:", err);
-      error.value = "Failed to fetch your playlists";
-      throw err;
+      error.value = "Failed to fetch playlists";
+      console.error(err);
+      return [];
     }
   };
 
-  // Search for Spotify artists
-  const searchArtists = async (query: string, playerId: string) => {
+  const searchArtists = async (
+    query: string,
+    playerId: string
+  ): Promise<SpotifyArtist[]> => {
     try {
-      error.value = null;
-      const response = await axios.get<SpotifyArtist[]>(
-        `${API_URL}/games/artists/search`,
-        {
-          params: {
-            playerId,
-            query,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/games/artists/search`, {
+        params: { playerId, query },
+      });
       return response.data;
     } catch (err) {
-      console.error("Failed to search artists:", err);
-      error.value = "Failed to search for artists";
-      throw err;
+      error.value = "Failed to search artists";
+      console.error(err);
+      return [];
     }
   };
 
-  // Get artist's top tracks
-  const getArtistTracks = async (artistId: string, playerId: string) => {
+  const getArtistTracks = async (
+    artistId: string,
+    playerId: string
+  ): Promise<SpotifyTrack[]> => {
     try {
-      error.value = null;
-      const response = await axios.get<SpotifyTrack[]>(
+      const response = await axios.get(
         `${API_URL}/games/artists/${artistId}/tracks`,
         {
-          params: {
-            playerId,
-          },
+          params: { playerId },
         }
       );
       return response.data;
     } catch (err) {
-      console.error("Failed to fetch artist tracks:", err);
-      error.value = "Failed to fetch artist's top tracks";
-      throw err;
+      error.value = "Failed to fetch artist tracks";
+      console.error(err);
+      return [];
+    }
+  };
+
+  // Device management
+  const getDevices = async (): Promise<SpotifyDevice[]> => {
+    if (!authStore.player?.id) return [];
+
+    try {
+      const response = await axios.get(`${API_URL}/games/devices`, {
+        params: { playerId: authStore.player.id },
+      });
+      return response.data.devices;
+    } catch (err) {
+      error.value = "Failed to fetch devices";
+      console.error(err);
+      return [];
+    }
+  };
+
+  const setActiveDevice = async (deviceId: string): Promise<void> => {
+    if (!authStore.player?.id) return;
+
+    try {
+      await axios.post(`${API_URL}/games/devices`, {
+        playerId: authStore.player.id,
+        deviceId,
+      });
+    } catch (err) {
+      error.value = "Failed to set active device";
+      console.error(err);
     }
   };
 
@@ -459,6 +482,7 @@ export const useGameStore = defineStore("game", () => {
     currentRound,
     roundResults,
     error,
+    elapsedTime,
     isHost,
     isInGame,
     canStartGame,
@@ -469,9 +493,10 @@ export const useGameStore = defineStore("game", () => {
     startRound,
     submitAnswer,
     leaveGame,
-    elapsedTime,
     getUserPlaylists,
     searchArtists,
     getArtistTracks,
+    getDevices,
+    setActiveDevice,
   };
 });

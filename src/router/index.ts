@@ -1,12 +1,13 @@
 import type { RouteRecordRaw } from "vue-router";
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../stores/auth";
+import HomeView from "../views/HomeView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
     path: "/",
     name: "home",
-    component: () => import("../views/HomeView.vue"),
+    component: HomeView,
     meta: { requiresAuth: true },
   },
   {
@@ -41,8 +42,8 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: "/auth/callback",
-    name: "auth-callback",
-    component: () => import("../views/LoginView.vue"),
+    name: "callback",
+    component: () => import("../views/CallbackView.vue"),
     meta: { requiresAuth: false },
   },
 ];
@@ -52,43 +53,34 @@ const router = createRouter({
   routes,
 });
 
-// Navigation guard
+// Auth guard
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  // Check if this is the callback route
-  if (to.name === "auth-callback") {
-    const code = to.query.code as string;
-    if (code) {
-      try {
-        await authStore.handleCallback(code);
-        return { name: "home" };
-      } catch (err) {
-        return { name: "login" };
-      }
-    }
+  // Initialize auth state if not already done
+  if (!authStore.isInitialized) {
+    await authStore.initialize();
   }
 
-  // Check if the route requires authentication
+  // Skip auth check for login and callback routes
+  if (to.path === "/login" || to.path === "/auth/callback") {
+    // If user is already authenticated and tries to access login, redirect to home
+    if (authStore.isAuthenticated && to.path === "/login") {
+      return { path: "/" };
+    }
+    return true;
+  }
+
+  // Check if route requires authentication
   if (to.meta.requiresAuth) {
-    // If not authenticated, redirect to login
+    // If not authenticated, store intended path and redirect to login
     if (!authStore.isAuthenticated) {
-      return { name: "login" };
-    }
-
-    // If authenticated but token might be expired, validate session
-    if (!authStore.hasValidToken) {
-      const isValid = await authStore.validateSession();
-      if (!isValid) {
-        return { name: "login" };
-      }
+      sessionStorage.setItem("redirectPath", to.fullPath);
+      return { path: "/login" };
     }
   }
 
-  // If we're going to login while already authenticated, redirect to home
-  if (to.name === "login" && authStore.isAuthenticated) {
-    return { name: "home" };
-  }
+  return true;
 });
 
 export default router;

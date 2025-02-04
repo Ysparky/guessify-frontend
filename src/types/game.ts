@@ -76,3 +76,21 @@ export interface SpotifyTrack {
   artist: string;
   duration_ms: number;
 }
+
+export interface SpotifyDevice {
+  id: string;
+  name: string;
+  type: string;
+  is_active: boolean;
+  volume_percent: number;
+}
+
+export interface GameSettings {
+  totalRounds: number;
+  gameMode: GameMode;
+  songSource: {
+    type: "playlist" | "artist" | "random";
+    id: string | null;
+    ownerId: string;
+  };
+}

@@ -79,7 +79,11 @@ watch(
         >
           <!-- Profile Header -->
           <div class="px-4 py-3 border-b border-white/5">
-            <div class="flex items-center gap-3">
+            <router-link
+              to="/profile"
+              class="flex items-center gap-3 hover:opacity-90 transition-opacity"
+              @click="showProfileMenu = false"
+            >
               <template v-if="authStore.player?.avatarUrl">
                 <img
                   :src="authStore.player.avatarUrl"
@@ -98,13 +102,13 @@ watch(
                 <div class="font-medium text-white truncate">
                   {{ authStore.player?.displayName }}
                 </div>
-                <div class="text-xs text-gray-400">Your Profile</div>
+                <div class="text-xs text-gray-400">View profile</div>
               </div>
-            </div>
+            </router-link>
           </div>
 
           <!-- Stats Section -->
-          <div class="px-4 py-3 border-b border-white/5">
+          <div class="px-4 py-3">
             <div v-if="statsStore.isLoading" class="flex justify-center py-2">
               <div class="animate-pulse w-4 h-4 bg-white/10 rounded-full"></div>
             </div>
@@ -136,17 +140,6 @@ watch(
                 </div>
               </div>
             </template>
-          </div>
-
-          <!-- Menu Items -->
-          <div class="py-1">
-            <router-link
-              to="/profile"
-              class="block px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 active:bg-white/10"
-              @click="showProfileMenu = false"
-            >
-              Settings
-            </router-link>
           </div>
         </div>
       </div>

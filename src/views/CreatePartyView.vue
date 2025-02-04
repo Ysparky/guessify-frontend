@@ -19,6 +19,7 @@ const selectedPlaylistId = ref<string | null>(null)
 const selectedArtistId = ref<string | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const totalRounds = ref(5)
 
 const createParty = async () => {
   if (songSource.value !== 'random' && !selectedPlaylistId.value && !selectedArtistId.value) {
@@ -31,7 +32,7 @@ const createParty = async () => {
 
   try {
     const settings: GameSettings = {
-      totalRounds: 5,
+      totalRounds: totalRounds.value,
       gameMode: GameMode.MULTIPLE_CHOICE,
       songSource: {
         type: songSource.value,
@@ -60,6 +61,25 @@ const createParty = async () => {
     <h2 class="text-3xl font-bold mb-8">Create New Party</h2>
     
     <form @submit.prevent="createParty" class="space-y-8">
+      <!-- Round Selection -->
+      <div>
+        <h3 class="text-xl font-semibold mb-4">Number of Rounds</h3>
+        <div class="flex items-center gap-4">
+          <input
+            v-model="totalRounds"
+            type="range"
+            min="3"
+            max="10"
+            step="1"
+            class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-spotify-green"
+          >
+          <div class="w-16 text-center">
+            <span class="text-2xl font-semibold">{{ totalRounds }}</span>
+            <div class="text-sm text-gray-600">rounds</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Game Mode Selection -->
       <div>
         <h3 class="text-xl font-semibold mb-4">Game Mode</h3>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router';
 import { useUserInitials } from '../composables/useUserInitials';
 import { useAuthStore } from '../stores/auth';
 import { useStatsStore } from '../stores/stats';
 
+const router = useRouter();
 const authStore = useAuthStore();
 const statsStore = useStatsStore();
 const userInitials = useUserInitials();
@@ -11,6 +13,11 @@ const userInitials = useUserInitials();
 if (authStore.player?.id) {
   statsStore.getPlayerStats(authStore.player.id);
 }
+
+const handleSignOut = async () => {
+  await authStore.logout();
+  router.push('/login');
+};
 </script>
 
 <template>
@@ -42,7 +49,7 @@ if (authStore.player?.id) {
             </p>
           </div>
           <button
-            @click="authStore.logout"
+            @click="handleSignOut"
             class="ml-auto px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 font-medium rounded-xl transition-colors"
           >
             Sign Out

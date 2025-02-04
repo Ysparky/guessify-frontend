@@ -13,9 +13,14 @@ const createNewParty = () => {
   router.push('/create')
 }
 
+const handleInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  roomCode.value = input.value.toUpperCase()
+}
+
 const joinParty = async () => {
-  if (!roomCode.value) return
-  await gameStore.joinGame(roomCode.value.toUpperCase())
+  if (!roomCode.value || roomCode.value.length !== 6) return
+  await gameStore.joinGame(roomCode.value)
   if (gameStore.currentGame) {
     router.push(`/party/${gameStore.currentGame.roomCode}`)
   }
@@ -66,11 +71,15 @@ const joinParty = async () => {
             class="space-y-3 sm:space-y-4 animate-fadeIn">
         <input
           v-model="roomCode"
+          @input="handleInput"
           type="text"
           placeholder="Enter room code"
-          class="w-full px-6 py-3.5 bg-white/5 text-white rounded-xl text-center text-lg placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-spotify-green/50"
+          class="w-full px-6 py-3.5 bg-white/5 text-white rounded-xl text-center text-lg uppercase placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-spotify-green/50"
           maxlength="6"
+          minlength="6"
+          pattern="[A-Z0-9]{6}"
           autocomplete="off"
+          required
         >
         <div class="flex gap-3">
           <button type="button" @click="showJoinInput = false" 

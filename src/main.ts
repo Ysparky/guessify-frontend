@@ -9,8 +9,8 @@ import "./style.css";
 const app = createApp(App);
 
 const toastOptions: PluginOptions = {
-  position: POSITION.TOP_RIGHT,
-  timeout: 4000,
+  position: POSITION.BOTTOM_CENTER,
+  timeout: 2000,
   closeOnClick: true,
   pauseOnFocusLoss: true,
   pauseOnHover: true,
@@ -22,7 +22,7 @@ const toastOptions: PluginOptions = {
   icon: true,
   rtl: false,
   maxToasts: 3,
-  newestOnTop: true,
+  newestOnTop: false,
   transition: {
     enter: "Vue-Toastification__bounce",
     leave: "Vue-Toastification__fade",
